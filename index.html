@@ -23,6 +23,7 @@
     @keyframes twinkle{0%,100%{opacity:.03}50%{opacity:.5}}
     @keyframes shootStar{0%{opacity:0;transform:translate(0,0) rotate(-40deg) scale(.3)}5%{opacity:1}100%{opacity:0;transform:translate(-500px,400px) rotate(-40deg) scale(.08)}}
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes scIn{0%{opacity:0;transform:translateY(10px) scale(.98)}100%{opacity:1;transform:translateY(0) scale(1)}}
     @keyframes fadeDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
     @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
@@ -41,6 +42,8 @@
     @keyframes countUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
     @keyframes lineDraw{from{stroke-dashoffset:1000}to{stroke-dashoffset:0}}
     @keyframes barDance{0%{transform:scaleY(.3)}100%{transform:scaleY(1)}}
+    @keyframes solveFlash{0%{filter:brightness(1)}50%{filter:brightness(2.5)}100%{filter:brightness(1)}}
+    .sc-in{animation:scIn .5s cubic-bezier(.16,1,.3,1) both}
 
     .af{animation:fadeUp .4s ease-out forwards}
     .afd{animation:fadeDown .3s ease-out forwards}
@@ -210,141 +213,181 @@ var SFX={ctx:null,
   }catch(e){}}
 };
 
-// ══════ MUSIC ══════
-var MUS={ctx:null,master:null,reverb:null,on:false,oscs:[],ts:[],beat:0,
-  _mkCtx:function(){
-    var C=window.AudioContext||window.webkitAudioContext;if(!C)return false;
-    this.ctx=new C();if(this.ctx.state==='suspended')this.ctx.resume();
-    this.master=this.ctx.createGain();this.master.gain.setValueAtTime(0,this.ctx.currentTime);
-    // Reverb via convolver
-    try{
-      var rv=this.ctx.createConvolver();
-      var len=this.ctx.sampleRate*2.5;var imp=this.ctx.createBuffer(2,len,this.ctx.sampleRate);
-      for(var ch=0;ch<2;ch++){var d=imp.getChannelData(ch);for(var i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.2)}
-      rv.buffer=imp;
-      var rvGain=this.ctx.createGain();rvGain.gain.value=.28;
-      this.master.connect(rv);rv.connect(rvGain);rvGain.connect(this.ctx.destination);
-      this.reverb=rv;
-    }catch(e){}
-    this.master.connect(this.ctx.destination);
-    return true;
-  },
-  // Helper: play a note with envelope
-  _note:function(freq,start,dur,vol,type,dest){
-    if(!this.ctx||!dest)return;
-    var o=this.ctx.createOscillator(),g=this.ctx.createGain();
-    o.type=type||'sine';o.frequency.value=freq;
-    var atk=Math.min(.08,dur*.1);var rel=Math.min(.6,dur*.4);
-    g.gain.setValueAtTime(0,start);
-    g.gain.linearRampToValueAtTime(vol,start+atk);
-    g.gain.setValueAtTime(vol,start+dur-rel);
-    g.gain.exponentialRampToValueAtTime(.001,start+dur);
-    o.connect(g);g.connect(dest);o.start(start);o.stop(start+dur+.05);
-  },
-  // Drone pads — continuous harmony
-  _pads:function(){
-    if(!this.ctx||!this.master)return;
-    // C minor pentatonic: C2 Eb2 F2 G2 Bb2
-    var roots=[65.41,77.78,87.31,98,116.54];
-    var self=this;
-    roots.forEach(function(f,i){
-      var o=self.ctx.createOscillator(),g=self.ctx.createGain();
-      o.type=i===0?'sine':'triangle';
-      o.frequency.value=f;
-      // Slow vibrato
-      var lfo=self.ctx.createOscillator(),lfog=self.ctx.createGain();
-      lfo.frequency.value=.15+i*.07;lfog.gain.value=f*.003;
-      lfo.connect(lfog);lfog.connect(o.frequency);lfo.start();
-      g.gain.value=i===0?.018:.008;
-      o.connect(g);g.connect(self.master);o.start();
-      self.oscs.push({o:o,g:g},{o:lfo,g:lfog});
+// ══════ MUSIC ENGINE ══════
+// Tüm müzik Web Audio API ile üretiliyor — dışarıdan dosya yüklenmiyor.
+// Mimarisi: master gain → destination
+// 3 katman: (1) Drone bass pedal, (2) Pad harmonics, (3) Melodic arpeggio
+var MUS=(function(){
+  var ctx=null,master=null,nodes=[],timers=[],running=false,phraseIdx=0;
+
+  // Do minör pentatonik frekansları — çeşitli oktavlar
+  var SCALE={
+    bass:  [65.41, 77.78, 87.31, 98.00, 116.54],          // C2 Eb2 F2 G2 Bb2
+    mid:   [130.81,155.56,174.61,196.00,233.08,261.63],    // C3..C4
+    high:  [261.63,311.13,349.23,392.00,466.16,523.25,587.33,622.25] // C4..D5
+  };
+
+  // Bir sinyal düğümü oluştur ve listeye ekle
+  function mk(type,freq){
+    var o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type; o.frequency.value=freq;
+    o.connect(g); g.connect(master);
+    o.start();
+    nodes.push(o,g);
+    return{o:o,g:g};
+  }
+
+  // Tek seferlik nota — zaman çizelgesine göre çalar
+  function note(freq,startT,dur,vol,type){
+    if(!ctx||!master)return;
+    var o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.value=0;
+    g.gain.setValueAtTime(0,startT);
+    g.gain.linearRampToValueAtTime(vol,startT+Math.min(0.08,dur*0.15));
+    g.gain.exponentialRampToValueAtTime(0.0001,startT+dur);
+    o.connect(g); g.connect(master);
+    o.start(startT); o.stop(startT+dur+0.1);
+  }
+
+  // Sürekli drone — bass pedal
+  function startDrone(){
+    var s=SCALE.bass;
+    [s[0],s[2],s[4]].forEach(function(f,i){
+      var n=mk('sine',f);
+      n.g.gain.value=i===0?0.055:0.025;
+      // Çok yavaş titreşim (vibrato)
+      var lfo=ctx.createOscillator(),lfg=ctx.createGain();
+      lfo.type='sine'; lfo.frequency.value=0.12+i*0.05;
+      lfg.gain.value=f*0.004;
+      lfo.connect(lfg); lfg.connect(n.o.frequency);
+      lfo.start(); nodes.push(lfo,lfg);
     });
-  },
-  // Melodic phrases — C minor pentatonic, higher register
-  _phrase:function(){
-    var self=this;
-    if(!self.on||!self.ctx||!self.master)return;
-    var now=self.ctx.currentTime;
-    // Scale: C4 Eb4 F4 G4 Bb4 C5 Eb5 F5
-    var scale=[261.63,311.13,349.23,392,466.16,523.25,622.25,698.46];
-    // Pick a pattern
-    var patterns=[
-      [0,2,4,3,1,0,2,4],
-      [4,3,2,0,1,3,4,2],
-      [0,1,2,4,3,1,0,2],
-      [2,4,3,1,2,0,1,3],
-    ];
-    var pat=patterns[self.beat%patterns.length];self.beat++;
-    var step=.42+Math.random()*.12;
-    for(var i=0;i<pat.length;i++){
-      var f=scale[pat[i]];
-      var vol=.009+Math.random()*.004;
-      var dur=step*(1.2+Math.random()*.6);
-      self._note(f,now+i*step,dur,vol,'sine',self.master);
-      // Occasional harmony a 5th above
-      if(Math.random()>.65)self._note(f*1.5,now+i*step,dur,vol*.4,'sine',self.master);
-    }
-    // Schedule next phrase: 8-14 seconds
-    var delay=8000+Math.random()*6000;
-    self.ts.push(setTimeout(function(){self._phrase()},delay));
-  },
-  // Subtle rhythmic pulse — soft pluck
-  _pulse:function(){
-    var self=this;
-    if(!self.on||!self.ctx||!self.master)return;
-    var now=self.ctx.currentTime;
-    var bpm=72;var beat=60/bpm;
-    // Soft pluck every 2 beats
-    for(var i=0;i<8;i++){
-      if(Math.random()>.45){
-        var f=130.81*(Math.random()>.5?1:1.5);
-        self._note(f,now+i*beat*2,beat*.8,.006,'triangle',self.master);
+  }
+
+  // Pad harmonics — üst perdeleri
+  function startPads(){
+    var s=SCALE.mid;
+    [s[0],s[2],s[4],s[5]].forEach(function(f,i){
+      var n=mk('triangle',f);
+      n.g.gain.value=[0.018,0.012,0.010,0.008][i];
+      // Amplitude LFO — nefes gibi salınım
+      var lfo=ctx.createOscillator(),lfg=ctx.createGain();
+      lfo.type='sine'; lfo.frequency.value=0.08+i*0.03;
+      lfg.gain.value=n.g.gain.value*0.4;
+      lfo.connect(lfg); lfg.connect(n.g);
+      lfo.start(); nodes.push(lfo,lfg);
+    });
+  }
+
+  // Melodik arpej cümlesi — her 6-10 saniyede bir çalar
+  var PATTERNS=[
+    [0,2,4,5,4,2,1,0],
+    [5,4,2,0,1,3,5,4],
+    [0,1,3,5,4,2,0,1],
+    [2,4,5,7,5,4,2,0],
+    [0,2,1,3,2,4,3,5],
+  ];
+  function playPhrase(){
+    if(!running||!ctx)return;
+    var now=ctx.currentTime;
+    var pat=PATTERNS[phraseIdx%PATTERNS.length]; phraseIdx++;
+    var s=SCALE.high;
+    var step=0.38+Math.random()*0.10;
+    pat.forEach(function(idx,i){
+      var f=s[idx%s.length];
+      var dur=step*(0.9+Math.random()*0.8);
+      var vol=0.035+Math.random()*0.015;
+      note(f,now+i*step,dur,vol,'sine');
+      // Zaman zaman 5'li aralık ekle
+      if(Math.random()>0.6) note(f*1.498,now+i*step,dur,vol*0.3,'sine');
+    });
+    // Sonraki cümle 6-10 sn sonra
+    var delay=(6000+Math.random()*4000);
+    timers.push(setTimeout(playPhrase,delay));
+  }
+
+  // Ritimsel bas dokunuşlar — BPM 76
+  var BPM=76, BEAT=60/BPM;
+  function playBeat(){
+    if(!running||!ctx)return;
+    var now=ctx.currentTime;
+    var hits=[0,2,4,6]; // 8 vuruştan seçilmiş
+    hits.forEach(function(h){
+      if(Math.random()>0.35){
+        var f=SCALE.bass[0]*(Math.random()>0.5?1:2);
+        note(f, now+h*BEAT, BEAT*0.7, 0.04, 'triangle');
       }
-    }
-    self.ts.push(setTimeout(function(){self._pulse()},8*beat*2*1000));
-  },
-  start:function(){
-    if(this.on)return;
-    if(!this._mkCtx())return;
-    this.on=true;this.oscs=[];this.ts=[];this.beat=0;
-    var self=this;
-    // Fade in
-    self.master.gain.linearRampToValueAtTime(.7,self.ctx.currentTime+6);
-    self._pads();
-    // Start melody after 3s, pulse after 2s
-    self.ts.push(setTimeout(function(){self._phrase()},3000));
-    self.ts.push(setTimeout(function(){self._pulse()},2000));
-  },
-  stop:function(){
-    this.on=false;
-    this.ts.forEach(function(t){clearTimeout(t)});this.ts=[];
-    if(this.master&&this.ctx){try{this.master.gain.linearRampToValueAtTime(0,this.ctx.currentTime+1.5)}catch(e){}}
-    var self=this;
-    setTimeout(function(){
-      self.oscs.forEach(function(x){try{x.o.stop()}catch(e){}try{x.o.disconnect()}catch(e){}});
-      self.oscs=[];
-      try{if(self.reverb)self.reverb.disconnect()}catch(e){}
-      try{if(self.ctx)self.ctx.close()}catch(e){};
-      self.ctx=null;self.master=null;self.reverb=null;
-    },2000);
-  },
-  // Fanfare on level complete
-  fanfare:function(){
-    try{
-      var C=window.AudioContext||window.webkitAudioContext;if(!C)return;
-      var ctx=this.ctx||(new C());if(ctx.state==='suspended')ctx.resume();
-      var m=ctx.createGain();m.gain.value=.15;m.connect(ctx.destination);
-      var now=ctx.currentTime;
-      // Rising arpeggio: C E G C' E'
-      var fs=[523.25,659.25,783.99,1046.5,1318.5];
-      var self=this;
-      fs.forEach(function(f,i){self._note(f,now+i*.1,.6,.6,'sine',m)});
-      // Chord bloom at end
-      [523.25,659.25,783.99].forEach(function(f,i){self._note(f,now+.6,.9,.3,'sine',m)});
-    }catch(e){}
-  },
-  toggle:function(v){if(v&&!this.on)this.start();else if(!v&&this.on)this.stop()}
-};
+    });
+    timers.push(setTimeout(playBeat, 8*BEAT*1000));
+  }
+
+  return{
+    start:function(){
+      if(running)return;
+      try{
+        var AC=window.AudioContext||window.webkitAudioContext;
+        if(!AC){console.warn('Web Audio desteklenmiyor');return;}
+        ctx=new AC();
+        if(ctx.state==='suspended')ctx.resume();
+        master=ctx.createGain();
+        master.gain.value=0.8; // Direkt set — ramp yok, anında duyulsun
+        master.connect(ctx.destination);
+        running=true; nodes=[]; timers=[]; phraseIdx=0;
+        startDrone();
+        startPads();
+        // İlk melodi hemen başlasın (0.5sn sonra)
+        timers.push(setTimeout(playPhrase,500));
+        timers.push(setTimeout(playBeat,1000));
+      }catch(e){console.error('MUS.start hata:',e);}
+    },
+    stop:function(){
+      running=false;
+      timers.forEach(function(t){clearTimeout(t)}); timers=[];
+      if(master&&ctx){
+        try{
+          master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
+          master.gain.linearRampToValueAtTime(0,ctx.currentTime+1.2);
+        }catch(e){}
+      }
+      setTimeout(function(){
+        nodes.forEach(function(n){try{n.stop?n.stop():n.disconnect()}catch(e){}});
+        nodes=[];
+        try{if(ctx)ctx.close();}catch(e){}
+        ctx=null; master=null;
+      },1500);
+    },
+    // Seviye bitince zafer fanfarı
+    fanfare:function(){
+      try{
+        var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+        var fc=ctx||(new AC());
+        if(fc.state==='suspended')fc.resume();
+        var fm=fc.createGain(); fm.gain.value=0.18; fm.connect(fc.destination);
+        var now=fc.currentTime;
+        // Yükselen arpej: C4 E4 G4 C5 E5
+        [261.63,329.63,392,523.25,659.25].forEach(function(f,i){
+          var o=fc.createOscillator(),g=fc.createGain();
+          o.type='sine'; o.frequency.value=f;
+          g.gain.setValueAtTime(0,now+i*0.09);
+          g.gain.linearRampToValueAtTime(0.7,now+i*0.09+0.04);
+          g.gain.exponentialRampToValueAtTime(0.001,now+i*0.09+0.8);
+          o.connect(g); g.connect(fm); o.start(now+i*0.09); o.stop(now+i*0.09+0.9);
+        });
+        // Son akord
+        [523.25,659.25,783.99].forEach(function(f,i){
+          var o=fc.createOscillator(),g=fc.createGain();
+          o.type='sine'; o.frequency.value=f;
+          g.gain.setValueAtTime(0,now+0.55);
+          g.gain.linearRampToValueAtTime(0.35-i*0.08,now+0.6);
+          g.gain.exponentialRampToValueAtTime(0.001,now+1.8);
+          o.connect(g); g.connect(fm); o.start(now+0.55); o.stop(now+2);
+        });
+      }catch(e){}
+    },
+    toggle:function(v){if(v)this.start();else this.stop();}
+  };
+})();
 
 // ══════ COMPONENTS ══════
 var BG=memo(function BG(p){return(
@@ -521,7 +564,7 @@ function Panel(p){
 // ══════ WIN ══════
 function Win(p){
   var earned=DL+(p.cleanW*DC);
-  return(<div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 sh overflow-y-auto"><div className="flex flex-col items-center gap-4 max-w-sm w-full text-center af relative z-10">
+  return(<div className="fixed inset-0 z-50 flex items-center justify-center p-4 sh overflow-y-auto" style={{background:'rgba(3,3,17,0.97)',animation:'scIn .4s cubic-bezier(.16,1,.3,1) both'}}><div className="flex flex-col items-center gap-4 max-w-sm w-full text-center relative z-10" style={{animation:'fadeUp .5s .1s ease-out both'}}>
     <div className="relative"><div className="absolute inset-0 rounded-full" style={{background:'rgba(246,197,83,.1)',animation:'starBurst 1.5s ease-out forwards'}}/><div className="relative w-20 h-20 rounded-full glass flex items-center justify-center"><Star size={30} fill="var(--gold)" style={{color:'var(--gold)'}}/></div></div>
     <div><h2 className="fh text-3xl font-bold gt">Bağlantı Kuruldu</h2><p className="fm text-white/12 uppercase mt-1" style={{fontSize:'8px',letterSpacing:'.4em'}}>{p.theme}</p></div>
     <div className="flex items-center gap-1 flex-wrap justify-center px-1">{p.chain.map(function(w,i){return(<React.Fragment key={i}><span className="fm font-semibold px-2 py-1 rounded-lg" style={{fontSize:'9px',animation:'countUp .3s '+(i*.06)+'s ease-out both',color:i===0||i===p.chain.length-1?'rgba(246,197,83,.7)':'rgba(167,139,250,.7)',background:i===0||i===p.chain.length-1?'rgba(246,197,83,.06)':'rgba(167,139,250,.06)',border:i===0||i===p.chain.length-1?'1px solid rgba(246,197,83,.12)':'1px solid rgba(167,139,250,.12)'}}>{w}</span>{i<p.chain.length-1&&<ChevronRight size={8} className="text-white/10"/>}</React.Fragment>)})}</div>
@@ -555,7 +598,7 @@ function App(){
   var[bgS]=useState(function(){return Array.from({length:100}).map(function(_,i){return{id:i,left:Math.random()*100,top:Math.random()*100,sz:Math.random()*1.5+.3,hue:['rgba(255,255,255,.5)','rgba(167,139,250,.3)','rgba(246,197,83,.3)','rgba(147,197,253,.25)'][Math.floor(Math.random()*4)],dur:Math.random()*5+2,del:Math.random()*8}})});
   var[sh,setSh]=useState([]);var sRefs=useRef([]);
   function sfx(t){if(sfxRef.current)SFX.play(t)}
-  useEffect(function(){MUS.toggle(musOn);return function(){MUS.toggle(false)}},[musOn]);
+  useEffect(function(){MUS.toggle(musOn)},[musOn]);
   useEffect(function(){var em=LS.g('cur');if(em){var us=LS.g('users',{});if(us[em]){doAuth(us[em]);return}}setScreen('WELCOME')},[]);
   function doAuth(u){setUser(u);setLvl(u.level||0);setMaxL(u.maxLevel||0);setDust(u.dust||DI);setStreak(u.streak||0);setTw(u.tw||0);setTl(u.tl||0);setScreen('HOME');if(!LS.g('tutDone'))setShowTut(true)}
   function save(up){var em=LS.g('cur');if(!em)return;var us=LS.g('users',{});var u=us[em];if(!u)return;Object.assign(u,up||{});us[em]=u;LS.s('users',us)}
@@ -612,7 +655,7 @@ function App(){
   if(screen==='HOME')return(
     <div className="fixed inset-0 overflow-hidden"><BG s={bgS} sh={sh}/>
       <div className="relative z-20 flex flex-col items-center justify-center w-full h-full p-5">
-        <div className="flex flex-col items-center gap-5 w-full max-w-sm">
+        <div className="flex flex-col items-center gap-5 w-full max-w-sm sc-in">
           <div className="flex flex-col items-center gap-2 afl"><div className="p-3 rounded-2xl glass"><BrainCircuit size={28} style={{color:'var(--gold)'}}/></div><h1 className="fh text-3xl font-bold gt tracking-wider">Yıldız Ağı</h1></div>
           <div className="w-full card rounded-3xl p-5 shadow-2xl">
             <div className="flex items-center gap-3 mb-3 pb-3" style={{borderBottom:'1px solid rgba(255,255,255,.04)'}}><div className="w-9 h-9 rounded-full glass flex items-center justify-center" style={{color:'var(--gold)'}}><User size={15}/></div><div className="flex-1"><p className="font-semibold text-sm">{user&&user.name}</p><p className="fm text-white/15" style={{fontSize:'8px'}}>{user&&user.email}</p></div><div className="flex items-center gap-1 px-2.5 py-1 glass rounded-full"><Sparkles size={11} style={{color:'var(--gold)',opacity:.6}}/><span className="fm font-bold" style={{fontSize:'11px',color:'rgba(246,197,83,.6)'}}>{dust}</span></div></div>
@@ -635,7 +678,7 @@ function App(){
 
   // ══════ PLAY ══════
   return(
-    <div className="fixed inset-0 overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden sc-in">
       <BG s={bgS} sh={sh}/>
       <div className="fixed top-0 left-0 right-0 z-30 p-3 flex justify-between items-start" style={{pointerEvents:'none'}}>
         <div style={{pointerEvents:'auto'}} className="flex flex-col gap-1"><h2 className="fh text-base font-bold text-white/80">{user&&user.name}</h2><div className="flex items-center gap-1 flex-wrap"><span className="px-2 py-0.5 rounded-full fm text-white/20" style={{fontSize:'8px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.04)'}}>{String(lvl+1).padStart(2,'0')}/{MAXL}</span><span className={"px-2 py-0.5 rounded-full font-semibold border "+diff.c} style={{fontSize:'8px',letterSpacing:'.1em'}}>{diff.l}</span>{streak>=SI&&<span className="px-2 py-0.5 rounded-full font-semibold flex items-center gap-0.5" style={{fontSize:'8px',color:'var(--rose)',border:'1px solid rgba(251,113,133,.15)',background:'rgba(251,113,133,.04)'}}><Flame size={9}/>{streak}</span>}</div></div>
