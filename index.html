@@ -217,115 +217,120 @@ var SFX={ctx:null,
   }catch(e){}}
 };
 
-// ══════ MUSIC ENGINE (Tone.js) ══════
-// Tone.js CDN'den async yükleniyor. Gerçek enstrüman sesi için:
-// MetalSynth → reverb → chorus → master
-// Çok kısa attack, uzun release = "plink" sesi, matkap değil müzik.
+// ══════ MUSIC ENGINE ══════
+// Tone.js Transport ile BPM'e kilitli, kesintisiz döngü.
+// 3 katman: (1) sürekli melody Pattern, (2) döngüsel pad Sequence, (3) seyrek bass Loop
 var MUS=(function(){
-  var loaded=false,running=false,timers=[],seqIdx=0;
-  var synth=null,pad=null,bass=null,rev=null,cho=null,vol=null;
+  var running=false;
+  var melSynth=null,padSynth=null,bassSynth=null;
+  var melPat=null,padSeq=null,bassLoop=null;
+  var reverb=null,delay=null,limiter=null;
+  var disposables=[];
 
-  // Tone.js yükle (CDN)
   function loadTone(cb){
     if(window.Tone){cb();return;}
     var s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
-    s.onload=function(){loaded=true;cb();};
+    s.onload=cb;
     s.onerror=function(){console.warn('Tone.js yüklenemedi');};
     document.head.appendChild(s);
   }
 
-  // C minör pentatonik notalar (Tone.js format)
-  var SCALE=['C4','Eb4','F4','G4','Bb4','C5','Eb5','F5','G5'];
-  var BASS =['C2','C2','G2','Bb2','F2'];
-
-  // Melodik sekanslar — her biri 6 nota
-  var SEQS=[
-    ['C4','Eb4','G4','F4','Eb4','C4'],
-    ['G4','F4','Eb4','C4','Eb4','G4'],
-    ['Bb4','G4','F4','Eb4','F4','G4'],
-    ['C5','Bb4','G4','F4','Eb4','C4'],
-    ['Eb4','F4','G4','Bb4','G4','F4'],
-    ['F4','Eb4','C4','Eb4','F4','G4'],
+  // C minör pentatonik — yumuşak, hüzünlü ama kozmik
+  // Melody: Transport'un her "2n" adımında bir nota
+  var MEL_NOTES = [
+    'C4','Eb4','G4','Bb4','C5','G4','F4','Eb4',
+    'C4','Eb4','F4','G4','Bb4','G4','Eb4','C4',
+    'G4','Bb4','C5','Eb5','C5','Bb4','G4','F4',
+    'Eb4','G4','Bb4','C5','G4','F4','Eb4','C4'
+  ];
+  // null = sus
+  var MEL_DUR = [
+    '4n','4n','2n',null,'4n','4n','4n','2n',
+    null,'4n','4n','2n','4n',null,'4n','2n',
+    '4n','4n','2n',null,'4n','4n','4n','2n',
+    null,'4n','2n','4n','4n',null,'4n','1n'
   ];
 
-  var CHORD_SEQS=[
-    [['C3','Eb3','G3'],['F3','Ab3','C4'],['Bb2','D3','F3'],['G2','Bb2','D3']],
-    [['Eb3','G3','Bb3'],['C3','Eb3','G3'],['F3','Ab3','C4'],['Bb2','Eb3','G3']],
+  // Pad: 4 ölçüde bir akord değişimi (döngü)
+  var PAD_CHORDS=[
+    ['C3','Eb3','G3','Bb3'],
+    ['F3','Ab3','C4','Eb4'],
+    ['Bb2','D3','F3','Ab3'],
+    ['G2','Bb2','D3','F3']
   ];
 
-  function buildInstruments(){
+  // Bass: her 2 ölçüde bir kökte çalar
+  var BASS_NOTES=['C2','F2','Bb1','G2'];
+
+  function build(){
     var T=window.Tone;
+    T.getTransport().bpm.value=72;
+    T.getTransport().loop=false;
 
-    // Reverb — geniş alan hissi
-    rev=new T.Reverb({decay:6,wet:0.55}).toDestination();
-    // Chorus — genişlik
-    cho=new T.Chorus(0.4,1.5,0.3).connect(rev);
-    cho.start();
-    // Volume master
-    vol=new T.Volume(-12).connect(cho);
+    // Efekt zinciri
+    limiter=new T.Limiter(-3).toDestination();
+    reverb=new T.Reverb({decay:8,preDelay:0.1,wet:0.6});
+    delay=new T.PingPongDelay({delayTime:'8n.',feedback:0.3,wet:0.15});
+    reverb.connect(limiter);
+    delay.connect(reverb);
+    disposables.push(limiter,reverb,delay);
 
-    // Ana melodik synth — piyano benzeri pluck
-    synth=new T.PolySynth(T.Synth,{
-      oscillator:{type:'triangle8'}, // yumuşak harmonikler
-      envelope:{attack:0.02,decay:1.2,sustain:0.0,release:1.8},
-      volume:-6
-    }).connect(vol);
-
-    // Pad synth — uzun, yumuşak akorlar
-    pad=new T.PolySynth(T.Synth,{
-      oscillator:{type:'sine'},
-      envelope:{attack:2.0,decay:1.0,sustain:0.6,release:4.0},
-      volume:-18
-    }).connect(rev);
-
-    // Bass — tek nota, seyrek
-    bass=new T.Synth({
-      oscillator:{type:'sine'},
-      envelope:{attack:0.1,decay:2.0,sustain:0.0,release:2.0},
+    // Melody synth — vibraphone tarzı, yumuşak pluck
+    melSynth=new T.PolySynth(T.Synth,{
+      oscillator:{type:'sine4'},
+      envelope:{attack:0.01,decay:2.5,sustain:0.0,release:2.0},
       volume:-14
-    }).connect(rev);
-  }
+    });
+    melSynth.connect(delay);
+    disposables.push(melSynth);
 
-  function playMelody(){
-    if(!running||!window.Tone)return;
-    var T=window.Tone;
-    var seq=SEQS[seqIdx%SEQS.length]; seqIdx++;
-    var now=T.now();
-    var step=0.55+Math.random()*0.2;
+    // Pad synth — çok yavaş açılan bulut gibi akorlar
+    padSynth=new T.PolySynth(T.Synth,{
+      oscillator:{type:'sine'},
+      envelope:{attack:3.0,decay:0.5,sustain:0.8,release:5.0},
+      volume:-22
+    });
+    padSynth.connect(reverb);
+    disposables.push(padSynth);
 
-    seq.forEach(function(note,i){
-      // Ana nota
-      synth.triggerAttackRelease(note,'4n',now+i*step);
-      // Zaman zaman oktav üstü yankı
-      if(Math.random()>0.65){
-        var oct=T.Frequency(note).transpose(12).toNote();
-        synth.triggerAttackRelease(oct,'8n',now+i*step+0.02,-12);
+    // Bass synth — derin, yumuşak bas
+    bassSynth=new T.Synth({
+      oscillator:{type:'sine'},
+      envelope:{attack:0.3,decay:3.0,sustain:0.0,release:3.0},
+      volume:-18
+    });
+    bassSynth.connect(reverb);
+    disposables.push(bassSynth);
+
+    // ── Melody Pattern: 32 adımlık döngü, '2n' aralık ──
+    var mIdx=0;
+    melPat=new T.Sequence(function(time){
+      var note=MEL_NOTES[mIdx];
+      var dur=MEL_DUR[mIdx];
+      mIdx=(mIdx+1)%MEL_NOTES.length;
+      if(note&&dur){
+        melSynth.triggerAttackRelease(note,dur,time);
       }
-    });
+    },MEL_NOTES,'2n');
+    melPat.loop=true;
+    disposables.push(melPat);
 
-    // Sonraki melodi 8-14 sn sonra
-    timers.push(setTimeout(playMelody,8000+Math.random()*6000));
-  }
+    // ── Pad Sequence: her '1m' (1 ölçü) bir akord ──
+    var pIdx=0;
+    padSeq=new T.Loop(function(time){
+      padSynth.triggerAttackRelease(PAD_CHORDS[pIdx%PAD_CHORDS.length],'1m',time);
+      pIdx++;
+    },'1m');
+    disposables.push(padSeq);
 
-  function playPad(){
-    if(!running||!window.Tone)return;
-    var T=window.Tone;
-    var cs=CHORD_SEQS[Math.floor(Math.random()*CHORD_SEQS.length)];
-    var now=T.now();
-    cs.forEach(function(chord,i){
-      pad.triggerAttackRelease(chord,'2n',now+i*4);
-    });
-    // 18-26 sn sonra tekrar
-    timers.push(setTimeout(playPad,18000+Math.random()*8000));
-  }
-
-  function playBass(){
-    if(!running||!window.Tone)return;
-    var T=window.Tone;
-    var b=BASS[Math.floor(Math.random()*BASS.length)];
-    bass.triggerAttackRelease(b,'1n',T.now());
-    timers.push(setTimeout(playBass,10000+Math.random()*8000));
+    // ── Bass Loop: her 2 ölçüde bir ──
+    var bIdx=0;
+    bassLoop=new T.Loop(function(time){
+      bassSynth.triggerAttackRelease(BASS_NOTES[bIdx%BASS_NOTES.length],'2n',time);
+      bIdx++;
+    },'2m');
+    disposables.push(bassLoop);
   }
 
   return{
@@ -334,48 +339,49 @@ var MUS=(function(){
       loadTone(function(){
         try{
           var T=window.Tone;
-          T.start(); // AudioContext resume (user gesture sonrası)
-          buildInstruments();
-          running=true;
-          // İlk sesler kısa gecikmelerle başlasın
-          timers.push(setTimeout(playPad,500));
-          timers.push(setTimeout(playMelody,2000));
-          timers.push(setTimeout(playBass,4000));
-        }catch(e){console.error('MUS start:',e);}
+          T.start().then(function(){
+            build();
+            running=true;
+            // Hepsini başlat
+            melPat.start(0);
+            padSeq.start(0);
+            bassLoop.start('+4m'); // bas biraz geç girsin
+            T.getTransport().start('+0.1');
+          });
+        }catch(e){console.error('MUS:',e);}
       });
     },
     stop:function(){
+      if(!running)return;
       running=false;
-      timers.forEach(function(t){clearTimeout(t)}); timers=[];
       try{
-        if(synth){synth.releaseAll();synth.dispose();synth=null;}
-        if(pad){pad.releaseAll();pad.dispose();pad=null;}
-        if(bass){bass.dispose();bass=null;}
-        if(cho){cho.dispose();cho=null;}
-        if(rev){rev.dispose();rev=null;}
-        if(vol){vol.dispose();vol=null;}
+        var T=window.Tone;
+        T.getTransport().stop();
+        T.getTransport().cancel();
+        disposables.forEach(function(d){try{d.dispose()}catch(e){}});
+        disposables=[];
+        melSynth=null;padSynth=null;bassSynth=null;
+        melPat=null;padSeq=null;bassLoop=null;
+        reverb=null;delay=null;limiter=null;
       }catch(e){}
     },
     fanfare:function(){
       if(!window.Tone)return;
       try{
         var T=window.Tone;
-        var s=new T.PolySynth(T.Synth,{
-          oscillator:{type:'triangle8'},
-          envelope:{attack:0.02,decay:0.8,sustain:0.1,release:1.2},
-          volume:-8
-        });
-        var r=new T.Reverb({decay:2,wet:0.4}).toDestination();
-        s.connect(r);
+        var lim=new T.Limiter(-3).toDestination();
+        var rev=new T.Reverb({decay:3,wet:0.45}).connect(lim);
+        var fs=new T.PolySynth(T.Synth,{
+          oscillator:{type:'sine4'},
+          envelope:{attack:0.01,decay:1.0,sustain:0.1,release:1.5},
+          volume:-10
+        }).connect(rev);
         var now=T.now();
-        // Yükselen arpej
         ['C4','E4','G4','C5','E5'].forEach(function(n,i){
-          s.triggerAttackRelease(n,'4n',now+i*0.12);
+          fs.triggerAttackRelease(n,'4n',now+i*0.13);
         });
-        // Son akord
-        s.triggerAttackRelease(['C4','E4','G4','C5'],'2n',now+0.7);
-        // Temizle
-        setTimeout(function(){try{s.dispose();r.dispose();}catch(e){}},5000);
+        fs.triggerAttackRelease(['C4','E4','G4','C5'],'1n',now+0.75);
+        setTimeout(function(){try{fs.dispose();rev.dispose();lim.dispose();}catch(e){}},6000);
       }catch(e){}
     },
     toggle:function(v){if(v)this.start();else this.stop();}
