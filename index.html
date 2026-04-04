@@ -40,7 +40,7 @@
     @keyframes pulseGlow{0%,100%{opacity:.12}50%{opacity:.35}}
     @keyframes countUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
     @keyframes lineDraw{from{stroke-dashoffset:1000}to{stroke-dashoffset:0}}
-    @keyframes solveFlash{0%{filter:brightness(1)}50%{filter:brightness(2.5)}100%{filter:brightness(1)}}
+    @keyframes barDance{0%{transform:scaleY(.3)}100%{transform:scaleY(1)}}
 
     .af{animation:fadeUp .4s ease-out forwards}
     .afd{animation:fadeDown .3s ease-out forwards}
@@ -185,7 +185,7 @@ var BASE=[
    chain:["SİS","KAYBOLMAK","PUSULA","YON","KARAR","GELECEK"],
    hints:["Görmemizi engelleyen beyaz perde","Sisin içinde yaşanan","Kaybolunca aranan rehber","Pusulanın gösterdiği","Yönünü belirleyince vermen gereken","Kararların toplamının oluşturduğu"]},
   {id:13,difficulty:"zor",theme:"Evrenin Fısıltısı",category:"Bilim",
-   chain:["SESSIZLIK","TİTREŞIM","ATOM","YILDIZ","IŞIK","GÖZ","BİLİNÇ"],
+   chain:["SESSİZLİK","TİTREŞİM","ATOM","YILDIZ","IŞIK","GÖZ","BİLİNÇ"],
    hints:["Evrenin başlangıcındaki boşluk","Sessizliği bozan ilk hareket","Titreşimin en küçük birimi","Atomların bir araya gelip parladığı","Yıldızın evrene yaydığı mesaj","Işığı yakalayan biyolojik alet","Gözün arkasında anlam yaratan güç"]},
   {id:14,difficulty:"zor",theme:"Unutulan Çağ",category:"Tarih",
    chain:["MAĞARA","DUVAR","RESİM","SEMBOL","ALFABE","KİTAP","KÜTÜPHANE"],
@@ -211,19 +211,138 @@ var SFX={ctx:null,
 };
 
 // ══════ MUSIC ══════
-var MUS={ctx:null,master:null,on:false,oscs:[],ts:[],
-  start:function(){if(this.on)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C)return;this.ctx=new C();if(this.ctx.state==='suspended')this.ctx.resume();this.master=this.ctx.createGain();this.master.gain.setValueAtTime(0,this.ctx.currentTime);this.master.gain.linearRampToValueAtTime(.02,this.ctx.currentTime+5);this.master.connect(this.ctx.destination);this.on=true;this.oscs=[];
-    var fs=[130.81,164.81,196];var vs=[.25,.18,.12];
-    for(var i=0;i<fs.length;i++){var o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type='sine';o.frequency.value=fs[i];g.gain.value=vs[i];o.connect(g);g.connect(this.master);o.start();this.oscs.push({o:o,g:g})}
-    this._mel()}catch(e){}},
-  _mel:function(){var self=this;var ns=[261.63,329.63,392,440,523.25];
-    function pl(){if(!self.on||!self.ctx)return;var now=self.ctx.currentTime;var cnt=2+Math.floor(Math.random()*2);
-      for(var i=0;i<cnt;i++){var f=ns[Math.floor(Math.random()*ns.length)];var o=self.ctx.createOscillator(),g=self.ctx.createGain();o.type='sine';o.frequency.value=f;var s=now+i*.8;var d=3+Math.random()*2;g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(.012,s+.5);g.gain.linearRampToValueAtTime(0,s+d);o.connect(g);g.connect(self.master);o.start(s);o.stop(s+d+.1)}
-      self.ts.push(setTimeout(pl,10000+Math.random()*12000))}
-    self.ts.push(setTimeout(pl,5000))},
-  stop:function(){this.on=false;this.ts.forEach(function(t){clearTimeout(t)});this.ts=[];
-    if(this.master&&this.ctx){try{this.master.gain.linearRampToValueAtTime(0,this.ctx.currentTime+1)}catch(e){}}
-    var self=this;setTimeout(function(){self.oscs.forEach(function(x){try{x.o.stop()}catch(e){}try{x.o.disconnect()}catch(e){}});self.oscs=[];try{if(self.ctx)self.ctx.close()}catch(e){};self.ctx=null;self.master=null},1500)},
+var MUS={ctx:null,master:null,reverb:null,on:false,oscs:[],ts:[],beat:0,
+  _mkCtx:function(){
+    var C=window.AudioContext||window.webkitAudioContext;if(!C)return false;
+    this.ctx=new C();if(this.ctx.state==='suspended')this.ctx.resume();
+    this.master=this.ctx.createGain();this.master.gain.setValueAtTime(0,this.ctx.currentTime);
+    // Reverb via convolver
+    try{
+      var rv=this.ctx.createConvolver();
+      var len=this.ctx.sampleRate*2.5;var imp=this.ctx.createBuffer(2,len,this.ctx.sampleRate);
+      for(var ch=0;ch<2;ch++){var d=imp.getChannelData(ch);for(var i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.2)}
+      rv.buffer=imp;
+      var rvGain=this.ctx.createGain();rvGain.gain.value=.28;
+      this.master.connect(rv);rv.connect(rvGain);rvGain.connect(this.ctx.destination);
+      this.reverb=rv;
+    }catch(e){}
+    this.master.connect(this.ctx.destination);
+    return true;
+  },
+  // Helper: play a note with envelope
+  _note:function(freq,start,dur,vol,type,dest){
+    if(!this.ctx||!dest)return;
+    var o=this.ctx.createOscillator(),g=this.ctx.createGain();
+    o.type=type||'sine';o.frequency.value=freq;
+    var atk=Math.min(.08,dur*.1);var rel=Math.min(.6,dur*.4);
+    g.gain.setValueAtTime(0,start);
+    g.gain.linearRampToValueAtTime(vol,start+atk);
+    g.gain.setValueAtTime(vol,start+dur-rel);
+    g.gain.exponentialRampToValueAtTime(.001,start+dur);
+    o.connect(g);g.connect(dest);o.start(start);o.stop(start+dur+.05);
+  },
+  // Drone pads — continuous harmony
+  _pads:function(){
+    if(!this.ctx||!this.master)return;
+    // C minor pentatonic: C2 Eb2 F2 G2 Bb2
+    var roots=[65.41,77.78,87.31,98,116.54];
+    var self=this;
+    roots.forEach(function(f,i){
+      var o=self.ctx.createOscillator(),g=self.ctx.createGain();
+      o.type=i===0?'sine':'triangle';
+      o.frequency.value=f;
+      // Slow vibrato
+      var lfo=self.ctx.createOscillator(),lfog=self.ctx.createGain();
+      lfo.frequency.value=.15+i*.07;lfog.gain.value=f*.003;
+      lfo.connect(lfog);lfog.connect(o.frequency);lfo.start();
+      g.gain.value=i===0?.018:.008;
+      o.connect(g);g.connect(self.master);o.start();
+      self.oscs.push({o:o,g:g},{o:lfo,g:lfog});
+    });
+  },
+  // Melodic phrases — C minor pentatonic, higher register
+  _phrase:function(){
+    var self=this;
+    if(!self.on||!self.ctx||!self.master)return;
+    var now=self.ctx.currentTime;
+    // Scale: C4 Eb4 F4 G4 Bb4 C5 Eb5 F5
+    var scale=[261.63,311.13,349.23,392,466.16,523.25,622.25,698.46];
+    // Pick a pattern
+    var patterns=[
+      [0,2,4,3,1,0,2,4],
+      [4,3,2,0,1,3,4,2],
+      [0,1,2,4,3,1,0,2],
+      [2,4,3,1,2,0,1,3],
+    ];
+    var pat=patterns[self.beat%patterns.length];self.beat++;
+    var step=.42+Math.random()*.12;
+    for(var i=0;i<pat.length;i++){
+      var f=scale[pat[i]];
+      var vol=.009+Math.random()*.004;
+      var dur=step*(1.2+Math.random()*.6);
+      self._note(f,now+i*step,dur,vol,'sine',self.master);
+      // Occasional harmony a 5th above
+      if(Math.random()>.65)self._note(f*1.5,now+i*step,dur,vol*.4,'sine',self.master);
+    }
+    // Schedule next phrase: 8-14 seconds
+    var delay=8000+Math.random()*6000;
+    self.ts.push(setTimeout(function(){self._phrase()},delay));
+  },
+  // Subtle rhythmic pulse — soft pluck
+  _pulse:function(){
+    var self=this;
+    if(!self.on||!self.ctx||!self.master)return;
+    var now=self.ctx.currentTime;
+    var bpm=72;var beat=60/bpm;
+    // Soft pluck every 2 beats
+    for(var i=0;i<8;i++){
+      if(Math.random()>.45){
+        var f=130.81*(Math.random()>.5?1:1.5);
+        self._note(f,now+i*beat*2,beat*.8,.006,'triangle',self.master);
+      }
+    }
+    self.ts.push(setTimeout(function(){self._pulse()},8*beat*2*1000));
+  },
+  start:function(){
+    if(this.on)return;
+    if(!this._mkCtx())return;
+    this.on=true;this.oscs=[];this.ts=[];this.beat=0;
+    var self=this;
+    // Fade in
+    self.master.gain.linearRampToValueAtTime(.7,self.ctx.currentTime+6);
+    self._pads();
+    // Start melody after 3s, pulse after 2s
+    self.ts.push(setTimeout(function(){self._phrase()},3000));
+    self.ts.push(setTimeout(function(){self._pulse()},2000));
+  },
+  stop:function(){
+    this.on=false;
+    this.ts.forEach(function(t){clearTimeout(t)});this.ts=[];
+    if(this.master&&this.ctx){try{this.master.gain.linearRampToValueAtTime(0,this.ctx.currentTime+1.5)}catch(e){}}
+    var self=this;
+    setTimeout(function(){
+      self.oscs.forEach(function(x){try{x.o.stop()}catch(e){}try{x.o.disconnect()}catch(e){}});
+      self.oscs=[];
+      try{if(self.reverb)self.reverb.disconnect()}catch(e){}
+      try{if(self.ctx)self.ctx.close()}catch(e){};
+      self.ctx=null;self.master=null;self.reverb=null;
+    },2000);
+  },
+  // Fanfare on level complete
+  fanfare:function(){
+    try{
+      var C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+      var ctx=this.ctx||(new C());if(ctx.state==='suspended')ctx.resume();
+      var m=ctx.createGain();m.gain.value=.15;m.connect(ctx.destination);
+      var now=ctx.currentTime;
+      // Rising arpeggio: C E G C' E'
+      var fs=[523.25,659.25,783.99,1046.5,1318.5];
+      var self=this;
+      fs.forEach(function(f,i){self._note(f,now+i*.1,.6,.6,'sine',m)});
+      // Chord bloom at end
+      [523.25,659.25,783.99].forEach(function(f,i){self._note(f,now+.6,.9,.3,'sine',m)});
+    }catch(e){}
+  },
   toggle:function(v){if(v&&!this.on)this.start();else if(!v&&this.on)this.stop()}
 };
 
@@ -253,7 +372,7 @@ function Confirm(p){if(!p.cfg)return null;return(
 
 function CosmicWelcome(p){var[ph,setPh]=useState(0);useEffect(function(){var t1=setTimeout(function(){setPh(1)},600);var t2=setTimeout(function(){setPh(2)},1800);var t3=setTimeout(function(){setPh(3)},3200);var t4=setTimeout(p.onDone,4500);return function(){clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);clearTimeout(t4)}},[]);return(
   <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
-    <div className="absolute rounded-full" style={{width:'8px',height:'8px',background:'radial-gradient(circle,var(--goldGlow),rgba(167,139,250,.08),transparent)',transform:'scale('+(ph>=1?100:0)+')',opacity:ph>=3 ? 0.2 : 1,transition:'all 2.5s ease-out'}}/>
+    <div className="absolute inset-0 rounded-full" style={{background:'radial-gradient(ellipse at center,rgba(246,197,83,.08),rgba(167,139,250,.06),transparent)',transform:'scale('+(ph>=1?1:0)+')',opacity:ph>=3 ? 0 : 1,transition:'all 2.5s ease-out',transformOrigin:'center'}}/>
     <div className="relative z-10 flex flex-col items-center gap-4" style={{opacity:ph>=1?1:0,transform:'scale('+(ph>=1?1:.4)+')',transition:'all 1s cubic-bezier(.34,1.56,.64,1)'}}>
       {ph>=1&&<div style={{animation:'cosmicGrow 1s cubic-bezier(.34,1.56,.64,1) forwards'}}><BrainCircuit size={52} style={{color:'var(--gold)',filter:'drop-shadow(0 0 20px var(--goldGlow))'}}/></div>}
       {ph>=2&&<h1 className="fh text-5xl md:text-6xl font-bold text-white" style={{animation:'titleIn 1.2s cubic-bezier(.16,1,.3,1) forwards'}}>Yıldız Ağı</h1>}
@@ -463,12 +582,22 @@ function App(){
   function procInput(val){if(sel===null)return;sfx('click');var t=chain[sel];var u=val.toLocaleUpperCase('tr-TR');if(u.length<=t.length){setGuesses(function(g){var n=Object.assign({},g);n[sel]=u;return n});if(u===t)correct(sel)}}
   function doBack(){sfx('click');if(sel===null)return;var c=guesses[sel]||'';if(c.length>0)setGuesses(function(g){var n=Object.assign({},g);n[sel]=c.slice(0,-1);return n})}
   function correct(idx){
-    sfx('word');var nf=found.concat([idx]);setFound(nf);setTw(function(w){return w+1});
-    var used=hintN.has(idx);setDust(function(d){return d+DW+(used?0:DC)});sfx('reward');
-    if(!used){var ns=streak+1;setStreak(ns);if(ns>0&&ns%SI===0){sfx('streak');setDust(function(d){return d+1});setToast("\uD83D\uDD25 "+ns+" seri! +1 bonus")}}else setStreak(0);
-    setTimeout(function(){setSel(null);if(nf.length===total){setTimeout(function(){sfx('level');setShowWin(true);setLoadExpl(true);explainCh(chain).then(function(e){setWinExpl(e);setLoadExpl(false)})},400)}},400)
+    var nf=found.concat([idx]);setFound(nf);setTw(function(w){return w+1});
+    var used=hintN.has(idx);
+    var earned=DW+(used?0:DC);
+    setDust(function(d){return d+earned});
+    if(!used){
+      var ns=streak+1;setStreak(ns);
+      if(ns>0&&ns%SI===0){sfx('streak');setDust(function(d){return d+1});setToast("\uD83D\uDD25 "+ns+" seri! +1 bonus")}
+      else{sfx('word')}
+    }else{setStreak(0);sfx('word')}
+    setTimeout(function(){setSel(null);if(nf.length===total){setTimeout(function(){sfx('level');MUS.fanfare();setShowWin(true);setLoadExpl(true);explainCh(chain).then(function(e){setWinExpl(e);setLoadExpl(false)})},400)}},400)
   }
-  function doLH(){if(sel===null||animStar)return;if(dust<1){sfx('error');setToast("Yıldız tozu yetersiz");return}sfx('hint');setHintN(function(s){var n=new Set(s);n.add(sel);return n});var t=chain[sel],c=(guesses[sel]||'').toLocaleUpperCase('tr-TR');var ni=0;for(var i=0;i<t.length;i++){if(c[i]!==t[i]){ni=i;break}ni=i+1}if(ni>=t.length)return;setDust(function(d){return d-1});var sl=sRefs.current[ni];if(!sl)return;var r=sl.getBoundingClientRect();var sx=window.innerWidth*.85,sy=40;setAnimStar({sx:sx,sy:sy,tx:r.left+r.width/2-sx,ty:r.top+r.height/2-sy});setTimeout(function(){var nc=t[ni],nv=c.substring(0,ni)+nc+c.substring(ni+1);setGuesses(function(g){var n=Object.assign({},g);n[sel]=nv;return n});setHIdx(ni);setTimeout(function(){setHIdx(null)},800);if(nv===t)correct(sel);setAnimStar(null)},1700)}
+  function doLH(){if(sel===null||animStar)return;if(dust<1){sfx('error');setToast("Yıldız tozu yetersiz");return}sfx('hint');setHintN(function(s){var n=new Set(s);n.add(sel);return n});var t=chain[sel],c=(guesses[sel]||'').toLocaleUpperCase('tr-TR');
+    // Find first wrong or missing letter
+    var ni=-1;for(var i=0;i<t.length;i++){if(c[i]!==t[i]){ni=i;break}}
+    if(ni===-1)return; // all letters already correct
+    setDust(function(d){return d-1});var sl=sRefs.current[ni];if(!sl)return;var r=sl.getBoundingClientRect();var sx=window.innerWidth*.85,sy=40;setAnimStar({sx:sx,sy:sy,tx:r.left+r.width/2-sx,ty:r.top+r.height/2-sy});setTimeout(function(){var nc=t[ni],nv=c.substring(0,ni)+nc+c.substring(ni+1);setGuesses(function(g){var n=Object.assign({},g);n[sel]=nv;return n});setHIdx(ni);setTimeout(function(){setHIdx(null)},800);if(nv===t)correct(sel);setAnimStar(null)},1700)}
   function doAI(){if(sel===null)return;if(dust<2){sfx('error');setToast("Yetersiz (2 gerekli)");return}sfx('hint');setHintN(function(s){var n=new Set(s);n.add(sel);return n});setDust(function(d){return d-2});setLoadAI(true);setAiTxt(null);var prev=sel>0&&found.includes(sel-1)?chain[sel-1]:'?';var next=sel<total-1?'?':'?';getAIHint(chain[sel],hints[sel],prev,next).then(function(h){setAiTxt(h);setLoadAI(false)})}
   function doReveal(){if(sel===null)return;if(dust<3){sfx('error');setToast("Yetersiz (3 gerekli)");return}sfx('hint');setHintN(function(s){var n=new Set(s);n.add(sel);return n});setDust(function(d){return d-3});setGuesses(function(g){var n=Object.assign({},g);n[sel]=chain[sel];return n});correct(sel)}
   function nextLvl(){sfx('click');setDust(function(d){return d+DL});setTl(function(l){return l+1});var n=lvl+1;if(n>maxL)setMaxL(n);setLvl(n<MAXL?n:0);setScreen('PLAY');setShowWin(false)}
@@ -512,7 +641,10 @@ function App(){
         <div style={{pointerEvents:'auto'}} className="flex flex-col gap-1"><h2 className="fh text-base font-bold text-white/80">{user&&user.name}</h2><div className="flex items-center gap-1 flex-wrap"><span className="px-2 py-0.5 rounded-full fm text-white/20" style={{fontSize:'8px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.04)'}}>{String(lvl+1).padStart(2,'0')}/{MAXL}</span><span className={"px-2 py-0.5 rounded-full font-semibold border "+diff.c} style={{fontSize:'8px',letterSpacing:'.1em'}}>{diff.l}</span>{streak>=SI&&<span className="px-2 py-0.5 rounded-full font-semibold flex items-center gap-0.5" style={{fontSize:'8px',color:'var(--rose)',border:'1px solid rgba(251,113,133,.15)',background:'rgba(251,113,133,.04)'}}><Flame size={9}/>{streak}</span>}</div></div>
         <div style={{pointerEvents:'auto'}} className="flex flex-col items-end gap-1 relative">
           <div className="flex items-center gap-1">
-            <button onClick={function(){sfx('click');setMusOn(function(m){return!m})}} className="glass px-2.5 py-1.5 rounded-full" style={{color:musOn?'var(--gold)':'rgba(255,255,255,.1)'}}>{musOn?<Music size={12}/>:<Music2 size={12}/>}</button>
+            <button onClick={function(){sfx('click');setMusOn(function(m){return!m})}} className="glass px-2.5 py-1.5 rounded-full flex items-center gap-1" style={{color:musOn?'var(--gold)':'rgba(255,255,255,.1)'}}>
+              {musOn?<Music size={12}/>:<Music2 size={12}/>}
+              {musOn&&<span className="flex gap-px items-end" style={{height:'10px'}}>{[1,2,3].map(function(b){return <span key={b} className="inline-block w-px rounded-sm" style={{height:(30+b*20)+'%',background:'var(--gold)',animation:'barDance '+(0.4+b*.15)+'s ease-in-out infinite alternate'}}/>})}</span>}
+            </button>
             <button onClick={function(){setSfxOn(function(s){return!s})}} className="glass px-2.5 py-1.5 rounded-full" style={{color:sfxOn?'var(--purple)':'rgba(255,255,255,.1)'}}>{sfxOn?<Volume2 size={12}/>:<VolumeX size={12}/>}</button>
             <div className="glass px-2.5 py-1.5 rounded-full flex items-center gap-1"><Sparkles size={11} style={{color:'var(--gold)',opacity:.5}}/><span className="fm font-bold" style={{fontSize:'11px',color:'rgba(246,197,83,.5)'}}>{dust}</span></div>
             <button onClick={function(){sfx('click');setShowMenu(function(m){return!m})}} className="glass px-2.5 py-1.5 rounded-full font-semibold text-white/30" style={{fontSize:'11px'}}>☰</button>
