@@ -201,125 +201,109 @@ var BASE=[
 // ══════ SFX ══════
 var SFX={ctx:null,
   gc:function(){if(!this.ctx){var C=window.AudioContext||window.webkitAudioContext;if(C)this.ctx=new C()}if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();return this.ctx},
-  play:function(type){try{var c=this.gc();if(!c)return;var m=c.createGain();m.gain.value=.07;m.connect(c.destination);var n=c.currentTime;
-    function t(f,s,d,v){if(!v)v=.5;var o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(v,s+.02);g.gain.exponentialRampToValueAtTime(.001,s+d);o.connect(g);g.connect(m);o.start(s);o.stop(s+d)}
+  play:function(type){try{var c=this.gc();if(!c)return;
+    // Kompresör — her ses için
+    var cmp=c.createDynamicsCompressor();cmp.threshold.value=-12;cmp.ratio.value=6;cmp.attack.value=0.002;cmp.release.value=0.15;
+    var m=c.createGain();m.gain.value=0.04;cmp.connect(m);m.connect(c.destination);
+    var n=c.currentTime;
+    function t(f,s,d,v){if(!v)v=0.5;var o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(v,s+0.02);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(cmp);o.start(s);o.stop(s+d)}
     if(type==='click'){t(880,n,.04);t(1320,n+.01,.03)}
     else if(type==='word'){[440,554,659,880].forEach(function(f,i){t(f,n+i*.06,.7)})}
-    else if(type==='level'){for(var i=0;i<10;i++)t(220*Math.pow(1.4,i/2),n+i*.04,2)}
-    else if(type==='hint'){for(var j=0;j<3;j++)t(500+Math.random()*800,n+Math.random()*.2,.1,.12)}
+    else if(type==='level'){for(var i=0;i<8;i++)t(220*Math.pow(1.4,i/2),n+i*.05,1.5)}
+    else if(type==='hint'){for(var j=0;j<3;j++)t(500+Math.random()*600,n+j*.07,.15,.3)}
     else if(type==='streak'){[554,698,880,1108].forEach(function(f,i){t(f,n+i*.05,.7)})}
-    else if(type==='error'){var o2=c.createOscillator(),g2=c.createGain();o2.type='sine';o2.frequency.setValueAtTime(150,n);o2.frequency.linearRampToValueAtTime(80,n+.15);g2.gain.setValueAtTime(0,n);g2.gain.linearRampToValueAtTime(.2,n+.02);g2.gain.linearRampToValueAtTime(0,n+.15);o2.connect(g2);g2.connect(m);o2.start(n);o2.stop(n+.15)}
-    else if(type==='reward'){[587,740,880,1175].forEach(function(f,i){t(f,n+i*.04,.9,.35)})}
+    else if(type==='error'){var o2=c.createOscillator(),g2=c.createGain();o2.type='sine';o2.frequency.setValueAtTime(180,n);o2.frequency.linearRampToValueAtTime(90,n+.18);g2.gain.setValueAtTime(0,n);g2.gain.linearRampToValueAtTime(0.5,n+.02);g2.gain.linearRampToValueAtTime(0,n+.18);o2.connect(g2);g2.connect(cmp);o2.start(n);o2.stop(n+.2)}
+    else if(type==='reward'){[587,740,880,1175].forEach(function(f,i){t(f,n+i*.04,.9,.3)})}
   }catch(e){}}
 };
 
 // ══════ MUSIC ENGINE ══════
-// Tüm müzik Web Audio API ile üretiliyor — dışarıdan dosya yüklenmiyor.
-// Mimarisi: master gain → destination
-// 3 katman: (1) Drone bass pedal, (2) Pad harmonics, (3) Melodic arpeggio
+// Zincir: oscillator → bireysel gain → bus gain → compressor → master(0.35) → destination
+// Compressor clipping'i önler. Tüm bireysel gain'ler çok düşük tutulur.
 var MUS=(function(){
-  var ctx=null,master=null,nodes=[],timers=[],running=false,phraseIdx=0;
+  var ctx=null,master=null,comp=null,nodes=[],timers=[],running=false,phraseIdx=0;
 
-  // Do minör pentatonik frekansları — çeşitli oktavlar
-  var SCALE={
-    bass:  [65.41, 77.78, 87.31, 98.00, 116.54],          // C2 Eb2 F2 G2 Bb2
-    mid:   [130.81,155.56,174.61,196.00,233.08,261.63],    // C3..C4
-    high:  [261.63,311.13,349.23,392.00,466.16,523.25,587.33,622.25] // C4..D5
-  };
+  // Do minör pentatonik — sadece sine dalgalar (triangle/square cızırtı yapar)
+  var BASS_F  = [65.41, 87.31, 116.54];          // C2 F2 Bb2
+  var PAD_F   = [130.81,155.56,196.00,261.63];   // C3 Eb3 G3 C4
+  var MEL_F   = [261.63,311.13,349.23,392.00,466.16,523.25,622.25,698.46]; // C4→F5
 
-  // Bir sinyal düğümü oluştur ve listeye ekle
-  function mk(type,freq){
-    var o=ctx.createOscillator(),g=ctx.createGain();
-    o.type=type; o.frequency.value=freq;
-    o.connect(g); g.connect(master);
+  var PATTERNS=[
+    [0,2,4,3,1,0,2,4],
+    [4,3,1,0,2,4,3,1],
+    [0,1,3,4,2,0,1,3],
+    [2,4,3,1,0,2,4,3],
+    [0,2,1,3,4,2,0,1],
+  ];
+
+  // Oscillator + gain düğümü yarat, bus'a bağla
+  function osc(freq, gainVal, bus){
+    var o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.value=freq;
+    g.gain.value=gainVal;
+    o.connect(g); g.connect(bus);
     o.start();
     nodes.push(o,g);
     return{o:o,g:g};
   }
 
-  // Tek seferlik nota — zaman çizelgesine göre çalar
-  function note(freq,startT,dur,vol,type){
+  // Zamanlanmış tek nota — sadece sine, çok düşük gain
+  function note(freq,startT,dur,peakVol){
     if(!ctx||!master)return;
     var o=ctx.createOscillator(),g=ctx.createGain();
-    o.type=type||'sine'; o.frequency.value=freq;
-    g.gain.value=0;
+    o.type='sine'; o.frequency.value=freq;
+    var atk=0.06, rel=Math.min(dur*0.5,0.4);
     g.gain.setValueAtTime(0,startT);
-    g.gain.linearRampToValueAtTime(vol,startT+Math.min(0.08,dur*0.15));
+    g.gain.linearRampToValueAtTime(peakVol,startT+atk);
+    g.gain.setValueAtTime(peakVol,startT+dur-rel);
     g.gain.exponentialRampToValueAtTime(0.0001,startT+dur);
     o.connect(g); g.connect(master);
-    o.start(startT); o.stop(startT+dur+0.1);
+    o.start(startT); o.stop(startT+dur+0.15);
   }
 
-  // Sürekli drone — bass pedal
+  // Bass drone katmanı — 3 ses, çok düşük seviye
   function startDrone(){
-    var s=SCALE.bass;
-    [s[0],s[2],s[4]].forEach(function(f,i){
-      var n=mk('sine',f);
-      n.g.gain.value=i===0?0.055:0.025;
-      // Çok yavaş titreşim (vibrato)
-      var lfo=ctx.createOscillator(),lfg=ctx.createGain();
-      lfo.type='sine'; lfo.frequency.value=0.12+i*0.05;
-      lfg.gain.value=f*0.004;
+    var bus=ctx.createGain(); bus.gain.value=0.12; bus.connect(comp);
+    nodes.push(bus);
+    BASS_F.forEach(function(f,i){
+      var n=osc(f, i===0?0.5:0.3, bus);
+      // Frekans LFO (hafif vibrato)
+      var lfo=ctx.createOscillator(), lfg=ctx.createGain();
+      lfo.type='sine'; lfo.frequency.value=0.10+i*0.04;
+      lfg.gain.value=f*0.003;
       lfo.connect(lfg); lfg.connect(n.o.frequency);
       lfo.start(); nodes.push(lfo,lfg);
     });
   }
 
-  // Pad harmonics — üst perdeleri
+  // Pad katmanı — 4 ses, nefes gibi LFO
   function startPads(){
-    var s=SCALE.mid;
-    [s[0],s[2],s[4],s[5]].forEach(function(f,i){
-      var n=mk('triangle',f);
-      n.g.gain.value=[0.018,0.012,0.010,0.008][i];
-      // Amplitude LFO — nefes gibi salınım
-      var lfo=ctx.createOscillator(),lfg=ctx.createGain();
-      lfo.type='sine'; lfo.frequency.value=0.08+i*0.03;
-      lfg.gain.value=n.g.gain.value*0.4;
-      lfo.connect(lfg); lfg.connect(n.g);
+    var bus=ctx.createGain(); bus.gain.value=0.07; bus.connect(comp);
+    nodes.push(bus);
+    PAD_F.forEach(function(f,i){
+      var n=osc(f, [0.6,0.4,0.35,0.3][i], bus);
+      // Amplitude LFO
+      var lfo=ctx.createOscillator(), lfg=ctx.createGain();
+      lfo.type='sine'; lfo.frequency.value=0.07+i*0.025;
+      lfg.gain.value=[0.6,0.4,0.35,0.3][i]*0.35;
+      lfo.connect(lfg); lfg.connect(n.g.gain);
       lfo.start(); nodes.push(lfo,lfg);
     });
   }
 
-  // Melodik arpej cümlesi — her 6-10 saniyede bir çalar
-  var PATTERNS=[
-    [0,2,4,5,4,2,1,0],
-    [5,4,2,0,1,3,5,4],
-    [0,1,3,5,4,2,0,1],
-    [2,4,5,7,5,4,2,0],
-    [0,2,1,3,2,4,3,5],
-  ];
+  // Melodik arpej — bus gain ile kontrollü
   function playPhrase(){
     if(!running||!ctx)return;
     var now=ctx.currentTime;
     var pat=PATTERNS[phraseIdx%PATTERNS.length]; phraseIdx++;
-    var s=SCALE.high;
-    var step=0.38+Math.random()*0.10;
+    var step=0.40+Math.random()*0.08;
     pat.forEach(function(idx,i){
-      var f=s[idx%s.length];
-      var dur=step*(0.9+Math.random()*0.8);
-      var vol=0.035+Math.random()*0.015;
-      note(f,now+i*step,dur,vol,'sine');
-      // Zaman zaman 5'li aralık ekle
-      if(Math.random()>0.6) note(f*1.498,now+i*step,dur,vol*0.3,'sine');
+      var f=MEL_F[idx%MEL_F.length];
+      var dur=step*(1.0+Math.random()*0.6);
+      note(f, now+i*step, dur, 0.022); // çok düşük peak vol
+      if(Math.random()>0.65) note(f*1.498, now+i*step, dur, 0.008);
     });
-    // Sonraki cümle 6-10 sn sonra
-    var delay=(6000+Math.random()*4000);
-    timers.push(setTimeout(playPhrase,delay));
-  }
-
-  // Ritimsel bas dokunuşlar — BPM 76
-  var BPM=76, BEAT=60/BPM;
-  function playBeat(){
-    if(!running||!ctx)return;
-    var now=ctx.currentTime;
-    var hits=[0,2,4,6]; // 8 vuruştan seçilmiş
-    hits.forEach(function(h){
-      if(Math.random()>0.35){
-        var f=SCALE.bass[0]*(Math.random()>0.5?1:2);
-        note(f, now+h*BEAT, BEAT*0.7, 0.04, 'triangle');
-      }
-    });
-    timers.push(setTimeout(playBeat, 8*BEAT*1000));
+    timers.push(setTimeout(playPhrase, 7000+Math.random()*5000));
   }
 
   return{
@@ -327,19 +311,32 @@ var MUS=(function(){
       if(running)return;
       try{
         var AC=window.AudioContext||window.webkitAudioContext;
-        if(!AC){console.warn('Web Audio desteklenmiyor');return;}
+        if(!AC)return;
         ctx=new AC();
         if(ctx.state==='suspended')ctx.resume();
+
+        // Compressor — clipping'i kesinlikle önler
+        comp=ctx.createDynamicsCompressor();
+        comp.threshold.value=-18;  // dB — bu seviyenin üstünü sıkıştır
+        comp.knee.value=6;
+        comp.ratio.value=4;        // 4:1 oran
+        comp.attack.value=0.003;
+        comp.release.value=0.25;
+
+        // Master gain — compressor çıkışını ölçekle
         master=ctx.createGain();
-        master.gain.value=0.8; // Direkt set — ramp yok, anında duyulsun
+        master.gain.value=0.35;    // Güvenli seviye
+
+        comp.connect(master);
         master.connect(ctx.destination);
+
+        // Drone ve pad'ler comp'a bağlı (osc→bus→comp)
+        // Melodik notalar master'a direkt bağlı ama peak vol 0.022
         running=true; nodes=[]; timers=[]; phraseIdx=0;
         startDrone();
         startPads();
-        // İlk melodi hemen başlasın (0.5sn sonra)
-        timers.push(setTimeout(playPhrase,500));
-        timers.push(setTimeout(playBeat,1000));
-      }catch(e){console.error('MUS.start hata:',e);}
+        timers.push(setTimeout(playPhrase,800));
+      }catch(e){console.error('MUS hata:',e);}
     },
     stop:function(){
       running=false;
@@ -347,15 +344,19 @@ var MUS=(function(){
       if(master&&ctx){
         try{
           master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
-          master.gain.linearRampToValueAtTime(0,ctx.currentTime+1.2);
+          master.gain.linearRampToValueAtTime(0,ctx.currentTime+1.0);
         }catch(e){}
       }
       setTimeout(function(){
-        nodes.forEach(function(n){try{n.stop?n.stop():n.disconnect()}catch(e){}});
+        nodes.forEach(function(n){
+          try{if(typeof n.stop==='function')n.stop()}catch(e){}
+          try{n.disconnect()}catch(e){}
+        });
         nodes=[];
-        try{if(ctx)ctx.close();}catch(e){}
-        ctx=null; master=null;
-      },1500);
+        try{if(comp)comp.disconnect()}catch(e){}
+        try{if(ctx)ctx.close()}catch(e){}
+        ctx=null; master=null; comp=null;
+      },1200);
     },
     // Seviye bitince zafer fanfarı
     fanfare:function(){
@@ -363,25 +364,27 @@ var MUS=(function(){
         var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
         var fc=ctx||(new AC());
         if(fc.state==='suspended')fc.resume();
-        var fm=fc.createGain(); fm.gain.value=0.18; fm.connect(fc.destination);
+        // Fanfare için ayrı kompresör + düşük gain
+        var fc2=fc.createDynamicsCompressor();
+        fc2.threshold.value=-12; fc2.ratio.value=6; fc2.attack.value=0.003; fc2.release.value=0.2;
+        var fm=fc.createGain(); fm.gain.value=0.12;
+        fc2.connect(fm); fm.connect(fc.destination);
         var now=fc.currentTime;
-        // Yükselen arpej: C4 E4 G4 C5 E5
         [261.63,329.63,392,523.25,659.25].forEach(function(f,i){
           var o=fc.createOscillator(),g=fc.createGain();
           o.type='sine'; o.frequency.value=f;
           g.gain.setValueAtTime(0,now+i*0.09);
-          g.gain.linearRampToValueAtTime(0.7,now+i*0.09+0.04);
-          g.gain.exponentialRampToValueAtTime(0.001,now+i*0.09+0.8);
-          o.connect(g); g.connect(fm); o.start(now+i*0.09); o.stop(now+i*0.09+0.9);
+          g.gain.linearRampToValueAtTime(0.4,now+i*0.09+0.05);
+          g.gain.exponentialRampToValueAtTime(0.001,now+i*0.09+0.9);
+          o.connect(g); g.connect(fc2); o.start(now+i*0.09); o.stop(now+i*0.09+1.0);
         });
-        // Son akord
         [523.25,659.25,783.99].forEach(function(f,i){
           var o=fc.createOscillator(),g=fc.createGain();
           o.type='sine'; o.frequency.value=f;
-          g.gain.setValueAtTime(0,now+0.55);
-          g.gain.linearRampToValueAtTime(0.35-i*0.08,now+0.6);
-          g.gain.exponentialRampToValueAtTime(0.001,now+1.8);
-          o.connect(g); g.connect(fm); o.start(now+0.55); o.stop(now+2);
+          g.gain.setValueAtTime(0,now+0.52);
+          g.gain.linearRampToValueAtTime(0.25-i*0.05,now+0.57);
+          g.gain.exponentialRampToValueAtTime(0.001,now+2.0);
+          o.connect(g); g.connect(fc2); o.start(now+0.52); o.stop(now+2.1);
         });
       }catch(e){}
     },
