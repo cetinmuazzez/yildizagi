@@ -217,175 +217,165 @@ var SFX={ctx:null,
   }catch(e){}}
 };
 
-// ══════ MUSIC ENGINE ══════
-// Zincir: oscillator → bireysel gain → bus gain → compressor → master(0.35) → destination
-// Compressor clipping'i önler. Tüm bireysel gain'ler çok düşük tutulur.
+// ══════ MUSIC ENGINE (Tone.js) ══════
+// Tone.js CDN'den async yükleniyor. Gerçek enstrüman sesi için:
+// MetalSynth → reverb → chorus → master
+// Çok kısa attack, uzun release = "plink" sesi, matkap değil müzik.
 var MUS=(function(){
-  var ctx=null,master=null,comp=null,nodes=[],timers=[],running=false,phraseIdx=0;
+  var loaded=false,running=false,timers=[],seqIdx=0;
+  var synth=null,pad=null,bass=null,rev=null,cho=null,vol=null;
 
-  // Do minör pentatonik — sadece sine dalgalar (triangle/square cızırtı yapar)
-  var BASS_F  = [65.41, 87.31, 116.54];          // C2 F2 Bb2
-  var PAD_F   = [130.81,155.56,196.00,261.63];   // C3 Eb3 G3 C4
-  var MEL_F   = [261.63,311.13,349.23,392.00,466.16,523.25,622.25,698.46]; // C4→F5
+  // Tone.js yükle (CDN)
+  function loadTone(cb){
+    if(window.Tone){cb();return;}
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
+    s.onload=function(){loaded=true;cb();};
+    s.onerror=function(){console.warn('Tone.js yüklenemedi');};
+    document.head.appendChild(s);
+  }
 
-  var PATTERNS=[
-    [0,2,4,3,1,0,2,4],
-    [4,3,1,0,2,4,3,1],
-    [0,1,3,4,2,0,1,3],
-    [2,4,3,1,0,2,4,3],
-    [0,2,1,3,4,2,0,1],
+  // C minör pentatonik notalar (Tone.js format)
+  var SCALE=['C4','Eb4','F4','G4','Bb4','C5','Eb5','F5','G5'];
+  var BASS =['C2','C2','G2','Bb2','F2'];
+
+  // Melodik sekanslar — her biri 6 nota
+  var SEQS=[
+    ['C4','Eb4','G4','F4','Eb4','C4'],
+    ['G4','F4','Eb4','C4','Eb4','G4'],
+    ['Bb4','G4','F4','Eb4','F4','G4'],
+    ['C5','Bb4','G4','F4','Eb4','C4'],
+    ['Eb4','F4','G4','Bb4','G4','F4'],
+    ['F4','Eb4','C4','Eb4','F4','G4'],
   ];
 
-  // Oscillator + gain düğümü yarat, bus'a bağla
-  function osc(freq, gainVal, bus){
-    var o=ctx.createOscillator(), g=ctx.createGain();
-    o.type='sine'; o.frequency.value=freq;
-    g.gain.value=gainVal;
-    o.connect(g); g.connect(bus);
-    o.start();
-    nodes.push(o,g);
-    return{o:o,g:g};
+  var CHORD_SEQS=[
+    [['C3','Eb3','G3'],['F3','Ab3','C4'],['Bb2','D3','F3'],['G2','Bb2','D3']],
+    [['Eb3','G3','Bb3'],['C3','Eb3','G3'],['F3','Ab3','C4'],['Bb2','Eb3','G3']],
+  ];
+
+  function buildInstruments(){
+    var T=window.Tone;
+
+    // Reverb — geniş alan hissi
+    rev=new T.Reverb({decay:6,wet:0.55}).toDestination();
+    // Chorus — genişlik
+    cho=new T.Chorus(0.4,1.5,0.3).connect(rev);
+    cho.start();
+    // Volume master
+    vol=new T.Volume(-12).connect(cho);
+
+    // Ana melodik synth — piyano benzeri pluck
+    synth=new T.PolySynth(T.Synth,{
+      oscillator:{type:'triangle8'}, // yumuşak harmonikler
+      envelope:{attack:0.02,decay:1.2,sustain:0.0,release:1.8},
+      volume:-6
+    }).connect(vol);
+
+    // Pad synth — uzun, yumuşak akorlar
+    pad=new T.PolySynth(T.Synth,{
+      oscillator:{type:'sine'},
+      envelope:{attack:2.0,decay:1.0,sustain:0.6,release:4.0},
+      volume:-18
+    }).connect(rev);
+
+    // Bass — tek nota, seyrek
+    bass=new T.Synth({
+      oscillator:{type:'sine'},
+      envelope:{attack:0.1,decay:2.0,sustain:0.0,release:2.0},
+      volume:-14
+    }).connect(rev);
   }
 
-  // Zamanlanmış tek nota — sadece sine, çok düşük gain
-  function note(freq,startT,dur,peakVol){
-    if(!ctx||!master)return;
-    var o=ctx.createOscillator(),g=ctx.createGain();
-    o.type='sine'; o.frequency.value=freq;
-    var atk=0.06, rel=Math.min(dur*0.5,0.4);
-    g.gain.setValueAtTime(0,startT);
-    g.gain.linearRampToValueAtTime(peakVol,startT+atk);
-    g.gain.setValueAtTime(peakVol,startT+dur-rel);
-    g.gain.exponentialRampToValueAtTime(0.0001,startT+dur);
-    o.connect(g); g.connect(master);
-    o.start(startT); o.stop(startT+dur+0.15);
-  }
+  function playMelody(){
+    if(!running||!window.Tone)return;
+    var T=window.Tone;
+    var seq=SEQS[seqIdx%SEQS.length]; seqIdx++;
+    var now=T.now();
+    var step=0.55+Math.random()*0.2;
 
-  // Bass drone katmanı — 3 ses, çok düşük seviye
-  function startDrone(){
-    var bus=ctx.createGain(); bus.gain.value=0.12; bus.connect(comp);
-    nodes.push(bus);
-    BASS_F.forEach(function(f,i){
-      var n=osc(f, i===0?0.5:0.3, bus);
-      // Frekans LFO (hafif vibrato)
-      var lfo=ctx.createOscillator(), lfg=ctx.createGain();
-      lfo.type='sine'; lfo.frequency.value=0.10+i*0.04;
-      lfg.gain.value=f*0.003;
-      lfo.connect(lfg); lfg.connect(n.o.frequency);
-      lfo.start(); nodes.push(lfo,lfg);
+    seq.forEach(function(note,i){
+      // Ana nota
+      synth.triggerAttackRelease(note,'4n',now+i*step);
+      // Zaman zaman oktav üstü yankı
+      if(Math.random()>0.65){
+        var oct=T.Frequency(note).transpose(12).toNote();
+        synth.triggerAttackRelease(oct,'8n',now+i*step+0.02,-12);
+      }
     });
+
+    // Sonraki melodi 8-14 sn sonra
+    timers.push(setTimeout(playMelody,8000+Math.random()*6000));
   }
 
-  // Pad katmanı — 4 ses, nefes gibi LFO
-  function startPads(){
-    var bus=ctx.createGain(); bus.gain.value=0.07; bus.connect(comp);
-    nodes.push(bus);
-    PAD_F.forEach(function(f,i){
-      var n=osc(f, [0.6,0.4,0.35,0.3][i], bus);
-      // Amplitude LFO
-      var lfo=ctx.createOscillator(), lfg=ctx.createGain();
-      lfo.type='sine'; lfo.frequency.value=0.07+i*0.025;
-      lfg.gain.value=[0.6,0.4,0.35,0.3][i]*0.35;
-      lfo.connect(lfg); lfg.connect(n.g.gain);
-      lfo.start(); nodes.push(lfo,lfg);
+  function playPad(){
+    if(!running||!window.Tone)return;
+    var T=window.Tone;
+    var cs=CHORD_SEQS[Math.floor(Math.random()*CHORD_SEQS.length)];
+    var now=T.now();
+    cs.forEach(function(chord,i){
+      pad.triggerAttackRelease(chord,'2n',now+i*4);
     });
+    // 18-26 sn sonra tekrar
+    timers.push(setTimeout(playPad,18000+Math.random()*8000));
   }
 
-  // Melodik arpej — bus gain ile kontrollü
-  function playPhrase(){
-    if(!running||!ctx)return;
-    var now=ctx.currentTime;
-    var pat=PATTERNS[phraseIdx%PATTERNS.length]; phraseIdx++;
-    var step=0.40+Math.random()*0.08;
-    pat.forEach(function(idx,i){
-      var f=MEL_F[idx%MEL_F.length];
-      var dur=step*(1.0+Math.random()*0.6);
-      note(f, now+i*step, dur, 0.022); // çok düşük peak vol
-      if(Math.random()>0.65) note(f*1.498, now+i*step, dur, 0.008);
-    });
-    timers.push(setTimeout(playPhrase, 7000+Math.random()*5000));
+  function playBass(){
+    if(!running||!window.Tone)return;
+    var T=window.Tone;
+    var b=BASS[Math.floor(Math.random()*BASS.length)];
+    bass.triggerAttackRelease(b,'1n',T.now());
+    timers.push(setTimeout(playBass,10000+Math.random()*8000));
   }
 
   return{
     start:function(){
       if(running)return;
-      try{
-        var AC=window.AudioContext||window.webkitAudioContext;
-        if(!AC)return;
-        ctx=new AC();
-        if(ctx.state==='suspended')ctx.resume();
-
-        // Compressor — clipping'i kesinlikle önler
-        comp=ctx.createDynamicsCompressor();
-        comp.threshold.value=-18;  // dB — bu seviyenin üstünü sıkıştır
-        comp.knee.value=6;
-        comp.ratio.value=4;        // 4:1 oran
-        comp.attack.value=0.003;
-        comp.release.value=0.25;
-
-        // Master gain — compressor çıkışını ölçekle
-        master=ctx.createGain();
-        master.gain.value=0.35;    // Güvenli seviye
-
-        comp.connect(master);
-        master.connect(ctx.destination);
-
-        // Drone ve pad'ler comp'a bağlı (osc→bus→comp)
-        // Melodik notalar master'a direkt bağlı ama peak vol 0.022
-        running=true; nodes=[]; timers=[]; phraseIdx=0;
-        startDrone();
-        startPads();
-        timers.push(setTimeout(playPhrase,800));
-      }catch(e){console.error('MUS hata:',e);}
+      loadTone(function(){
+        try{
+          var T=window.Tone;
+          T.start(); // AudioContext resume (user gesture sonrası)
+          buildInstruments();
+          running=true;
+          // İlk sesler kısa gecikmelerle başlasın
+          timers.push(setTimeout(playPad,500));
+          timers.push(setTimeout(playMelody,2000));
+          timers.push(setTimeout(playBass,4000));
+        }catch(e){console.error('MUS start:',e);}
+      });
     },
     stop:function(){
       running=false;
       timers.forEach(function(t){clearTimeout(t)}); timers=[];
-      if(master&&ctx){
-        try{
-          master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
-          master.gain.linearRampToValueAtTime(0,ctx.currentTime+1.0);
-        }catch(e){}
-      }
-      setTimeout(function(){
-        nodes.forEach(function(n){
-          try{if(typeof n.stop==='function')n.stop()}catch(e){}
-          try{n.disconnect()}catch(e){}
-        });
-        nodes=[];
-        try{if(comp)comp.disconnect()}catch(e){}
-        try{if(ctx)ctx.close()}catch(e){}
-        ctx=null; master=null; comp=null;
-      },1200);
-    },
-    // Seviye bitince zafer fanfarı
-    fanfare:function(){
       try{
-        var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
-        var fc=ctx||(new AC());
-        if(fc.state==='suspended')fc.resume();
-        // Fanfare için ayrı kompresör + düşük gain
-        var fc2=fc.createDynamicsCompressor();
-        fc2.threshold.value=-12; fc2.ratio.value=6; fc2.attack.value=0.003; fc2.release.value=0.2;
-        var fm=fc.createGain(); fm.gain.value=0.12;
-        fc2.connect(fm); fm.connect(fc.destination);
-        var now=fc.currentTime;
-        [261.63,329.63,392,523.25,659.25].forEach(function(f,i){
-          var o=fc.createOscillator(),g=fc.createGain();
-          o.type='sine'; o.frequency.value=f;
-          g.gain.setValueAtTime(0,now+i*0.09);
-          g.gain.linearRampToValueAtTime(0.4,now+i*0.09+0.05);
-          g.gain.exponentialRampToValueAtTime(0.001,now+i*0.09+0.9);
-          o.connect(g); g.connect(fc2); o.start(now+i*0.09); o.stop(now+i*0.09+1.0);
+        if(synth){synth.releaseAll();synth.dispose();synth=null;}
+        if(pad){pad.releaseAll();pad.dispose();pad=null;}
+        if(bass){bass.dispose();bass=null;}
+        if(cho){cho.dispose();cho=null;}
+        if(rev){rev.dispose();rev=null;}
+        if(vol){vol.dispose();vol=null;}
+      }catch(e){}
+    },
+    fanfare:function(){
+      if(!window.Tone)return;
+      try{
+        var T=window.Tone;
+        var s=new T.PolySynth(T.Synth,{
+          oscillator:{type:'triangle8'},
+          envelope:{attack:0.02,decay:0.8,sustain:0.1,release:1.2},
+          volume:-8
         });
-        [523.25,659.25,783.99].forEach(function(f,i){
-          var o=fc.createOscillator(),g=fc.createGain();
-          o.type='sine'; o.frequency.value=f;
-          g.gain.setValueAtTime(0,now+0.52);
-          g.gain.linearRampToValueAtTime(0.25-i*0.05,now+0.57);
-          g.gain.exponentialRampToValueAtTime(0.001,now+2.0);
-          o.connect(g); g.connect(fc2); o.start(now+0.52); o.stop(now+2.1);
+        var r=new T.Reverb({decay:2,wet:0.4}).toDestination();
+        s.connect(r);
+        var now=T.now();
+        // Yükselen arpej
+        ['C4','E4','G4','C5','E5'].forEach(function(n,i){
+          s.triggerAttackRelease(n,'4n',now+i*0.12);
         });
+        // Son akord
+        s.triggerAttackRelease(['C4','E4','G4','C5'],'2n',now+0.7);
+        // Temizle
+        setTimeout(function(){try{s.dispose();r.dispose();}catch(e){}},5000);
       }catch(e){}
     },
     toggle:function(v){if(v)this.start();else this.stop();}
