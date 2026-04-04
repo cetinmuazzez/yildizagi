@@ -4,418 +4,539 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Yıldız Ağı</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Manrope:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@18.2.0",
-      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-      "lucide-react": "https://esm.sh/lucide-react@0.263.1"
-    }
-  }
-  </script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html,body{width:100%;height:100%;overflow:hidden}
-    body{background:#0a0a1a;color:#fff;font-family:'Manrope',sans-serif;touch-action:manipulation;user-select:none}
+    body{background:#030311;color:#fff;font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased;touch-action:manipulation;user-select:none;-webkit-user-select:none}
     .fh{font-family:'Playfair Display',serif}
     .fm{font-family:'DM Mono',monospace}
-    @keyframes glow{0%,100%{box-shadow:0 0 8px rgba(167,139,250,.15)}50%{box-shadow:0 0 25px rgba(167,139,250,.4)}}
-    @keyframes ripple{0%{transform:scale(.9);opacity:.4}100%{transform:scale(2.5);opacity:0}}
-    @keyframes orbit{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+    :root{
+      --bg:#030311;--card:rgba(8,8,28,.95);
+      --gold:#f6c553;--goldDim:#b8860b;--goldGlow:rgba(246,197,83,.25);
+      --purple:#a78bfa;--purpleDim:#6d28d9;--purpleGlow:rgba(167,139,250,.2);
+      --cyan:#22d3ee;--rose:#fb7185;--emerald:#34d399;
+    }
+
+    @keyframes twinkle{0%,100%{opacity:.03}50%{opacity:.5}}
+    @keyframes shootStar{0%{opacity:0;transform:translate(0,0) rotate(-40deg) scale(.3)}5%{opacity:1}100%{opacity:0;transform:translate(-500px,400px) rotate(-40deg) scale(.08)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-    @keyframes lineDraw{from{stroke-dashoffset:500}to{stroke-dashoffset:0}}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
     @keyframes letterPop{0%{transform:scale(1)}40%{transform:scale(1.3)}100%{transform:scale(1)}}
+    @keyframes glow{0%,100%{box-shadow:0 0 12px var(--purpleGlow)}50%{box-shadow:0 0 30px var(--purpleGlow),0 0 50px rgba(103,58,237,.1)}}
+    @keyframes ripple{0%{transform:scale(.9);opacity:.4}100%{transform:scale(2.5);opacity:0}}
+    @keyframes orbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+    @keyframes confetti{0%{opacity:1;transform:translateY(0) rotate(0) scale(1)}100%{opacity:0;transform:translateY(120px) rotate(600deg) scale(.08)}}
+    @keyframes starBurst{0%{transform:scale(0);opacity:1}50%{opacity:.3}100%{transform:scale(4);opacity:0}}
     @keyframes hintFly{0%{opacity:0;transform:translate(0,0) scale(.2)}10%{opacity:1}85%{opacity:.7;transform:translate(calc(var(--tx)*.9),calc(var(--ty)*.9)) scale(.8)}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0)}}
+    @keyframes cosmicGrow{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+    @keyframes titleIn{0%{opacity:0;letter-spacing:1em;filter:blur(6px)}100%{opacity:1;letter-spacing:.3em;filter:blur(0)}}
+    @keyframes subIn{0%{opacity:0}100%{opacity:.2}}
+    @keyframes pulseGlow{0%,100%{opacity:.12}50%{opacity:.35}}
+    @keyframes countUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes lineDraw{from{stroke-dashoffset:1000}to{stroke-dashoffset:0}}
+    @keyframes solveFlash{0%{filter:brightness(1)}50%{filter:brightness(2.5)}100%{filter:brightness(1)}}
+
+    .af{animation:fadeUp .4s ease-out forwards}
+    .afd{animation:fadeDown .3s ease-out forwards}
+    .ash{animation:shake .35s cubic-bezier(.36,.07,.19,.97) both}
+    .asu{animation:slideUp .4s cubic-bezier(.16,1,.3,1) forwards}
+    .afl{animation:float 4s ease-in-out infinite}
     .ang{animation:glow 2.5s ease-in-out infinite}
     .aor{animation:orbit 20s linear infinite}
-    .af{animation:fadeUp .4s ease-out forwards}
-    .asu{animation:slideUp .4s cubic-bezier(.16,1,.3,1) forwards}
+
+    .glass{background:rgba(255,255,255,.03);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06)}
+    .card{background:var(--card);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,.05)}
+
+    .dk{color:var(--emerald);border-color:rgba(52,211,153,.2);background:rgba(52,211,153,.05)}
+    .dm{color:var(--purple);border-color:rgba(167,139,250,.2);background:rgba(167,139,250,.05)}
+    .dz{color:var(--rose);border-color:rgba(251,113,133,.2);background:rgba(251,113,133,.05)}
+
+    .kb{transition:all .07s ease;-webkit-tap-highlight-color:transparent}
     .kb:active{transform:scale(.9);background:rgba(167,139,250,.3)!important}
+
+    .gt{background:linear-gradient(135deg,#f6c553 0%,#fff 40%,#a78bfa 70%,#f6c553 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .sh::-webkit-scrollbar{display:none}
+    .sh{-ms-overflow-style:none;scrollbar-width:none}
+    ::selection{background:rgba(246,197,83,.15)}
   </style>
 </head>
 <body>
 <div id="root"></div>
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="importmap">{"imports":{"react":"https://esm.sh/react@18.2.0","react-dom/client":"https://esm.sh/react-dom@18.2.0/client","lucide-react":"https://esm.sh/lucide-react@0.263.1"}}</script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel" data-type="module">
-import React,{useState,useEffect,useRef,useMemo,memo} from 'react';
+import React,{useState,useEffect,useRef,useCallback,useMemo,memo} from 'react';
 import {createRoot} from 'react-dom/client';
-import {Star,Sparkles,BrainCircuit,ArrowRight,X,Eye,Lock,Home,Volume2,VolumeX,LogOut,Delete,Lightbulb,Zap,Loader2,MessageCircle,User,Mail,Music,Music2,Trophy,ChevronRight} from 'lucide-react';
+import {Star,Sparkles,BrainCircuit,Play,ArrowRight,ArrowLeft,RefreshCcw,X,Eye,Lock,Home,Volume2,VolumeX,AlertTriangle,LogOut,Delete,Lightbulb,Zap,Flame,ChevronRight,User,Grid,Loader2,MessageCircle,Trophy,Target,Compass,Info,Music,Music2,Mail,Check,Gift,Share2,Swords,Copy} from 'lucide-react';
 
-const MODEL="claude-sonnet-4-20250514";
-const MAXL=100;
-const KB=[
-  ["E","R","T","Y","U","I","O","P","\u011E","\u00DC"],
-  ["A","S","D","F","G","H","J","K","L","\u015E","\u0130"],
-  ["Z","C","V","B","N","M","\u00D6","\u00C7"]
-];
+var MODEL="claude-sonnet-4-20250514";
+var MAXL=100, DI=15, DL=3, DW=1, DC=1, SI=3;
+var KB=[["E","R","T","Y","U","I","O","P","Ğ","Ü"],["A","S","D","F","G","H","J","K","L","Ş","İ"],["Z","C","V","B","N","M","Ö","Ç"]];
+var DF={kolay:{l:"KOLAY",c:"dk"},orta:{l:"ORTA",c:"dm"},zor:{l:"ZOR",c:"dz"}};
 
-/* ─── SHAPES ─── */
-const SHAPES={
+// Constellation shapes — positions as % of viewport area
+var SH={
   5:[
     [{x:50,y:15},{x:25,y:38},{x:42,y:60},{x:58,y:60},{x:75,y:38}],
     [{x:20,y:25},{x:50,y:15},{x:80,y:25},{x:65,y:60},{x:35,y:60}],
+    [{x:15,y:45},{x:35,y:22},{x:55,y:50},{x:70,y:25},{x:88,y:45}],
   ],
   6:[
     [{x:50,y:12},{x:25,y:30},{x:75,y:30},{x:30,y:58},{x:50,y:72},{x:70,y:58}],
+    [{x:20,y:18},{x:50,y:12},{x:80,y:18},{x:75,y:50},{x:50,y:65},{x:25,y:50}],
     [{x:30,y:15},{x:70,y:15},{x:85,y:42},{x:65,y:70},{x:35,y:70},{x:15,y:42}],
   ],
   7:[
     [{x:50,y:10},{x:25,y:25},{x:75,y:25},{x:15,y:50},{x:85,y:50},{x:35,y:72},{x:65,y:72}],
+    [{x:12,y:40},{x:28,y:22},{x:50,y:12},{x:72,y:22},{x:88,y:40},{x:72,y:62},{x:28,y:62}],
+    [{x:15,y:55},{x:30,y:30},{x:45,y:50},{x:55,y:25},{x:65,y:48},{x:78,y:22},{x:90,y:42}],
   ],
 };
-const getSh=(n,id)=>{const s=SHAPES[n];return s?s[id%s.length]:SHAPES[5][0]};
+function getSh(n,id){var s=SH[n];if(!s)return SH[5][0];return s[id%s.length];}
 
-/* ─── STORAGE ─── */
-const LS={
-  g:(k,fb=null)=>{try{const v=localStorage.getItem('yag_'+k);return v!=null?JSON.parse(v):fb}catch(e){return fb}},
-  s:(k,v)=>{try{localStorage.setItem('yag_'+k,JSON.stringify(v))}catch(e){}},
-  r:(k)=>{try{localStorage.removeItem('yag_'+k)}catch(e){}},
+// Storage
+var LS={
+  g:function(k,fb){try{var v=localStorage.getItem('ya4_'+k);return v!=null?JSON.parse(v):(fb===undefined?null:fb)}catch(e){return fb===undefined?null:fb}},
+  s:function(k,v){try{localStorage.setItem('ya4_'+k,JSON.stringify(v))}catch(e){}},
+  r:function(k){try{localStorage.removeItem('ya4_'+k)}catch(e){}},
+  clear:function(){try{Object.keys(localStorage).filter(function(k){return k.startsWith('ya4_')}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}}
 };
 
-/* ─── LEVELS ─── all words hidden, creative chains ─── */
-const BASE=[
-  {id:1,d:"kolay",theme:"\u0130pek Yolu",
-    chain:["\u0130PEK","B\u00D6CEK","\u00C7\u0130\u00C7EK","BAL","PETEK"],
-    hints:["Yumu\u015Fac\u0131k de\u011Ferli kuma\u015F","\u0130pe\u011Fi \u00fcreten k\u00fc\u00e7\u00fck yarat\u0131k","B\u00f6ce\u011fin ziyaret etti\u011fi g\u00fczellik","\u00c7i\u00e7ekten toplanan tatl\u0131 hazine","Bal\u0131n sakland\u0131\u011f\u0131 alt\u0131gen yap\u0131"]},
-  {id:2,d:"kolay",theme:"Sesin \u0130zi",
-    chain:["KULAK","MELOD\u0130","PARMAK","TEL","G\u0130TAR"],
-    hints:["Sesin girdi\u011fi kap\u0131","Kula\u011fa ho\u015F gelen dizi","Melodiyi \u00e7almak i\u00e7in uzanan","Parma\u011f\u0131n dokundu\u011fu ince hat","Tellerin bulu\u015Ftu\u011fu enstr\u00fcman"]},
-  {id:3,d:"kolay",theme:"Derinlik",
-    chain:["DALGA","KUMSAL","KABUK","\u0130NC\u0130","TA\u00c7"],
-    hints:["Denizin k\u0131yaya uzanan eli","Dalgan\u0131n \u00f6pt\u00fc\u011f\u00fc yer","Kumsalda bulunan deniz hediyesi","Kabu\u011fun i\u00e7inde saklanan hazine","\u0130ncinin s\u00fcsledi\u011fi asil ba\u015Fl\u0131k"]},
-  {id:4,d:"kolay",theme:"I\u015F\u0131k Yolu",
-    chain:["G\u00d6LGE","I\u015eIK","CAM","PR\u0130ZMA","G\u00d6KKU\u015eA\u011eI"],
-    hints:["Karanl\u0131\u011f\u0131n bedenimize yap\u0131\u015Fan\u0131","G\u00f6lgeyi yok eden g\u00fc\u00e7","I\u015f\u0131\u011f\u0131n ge\u00e7ebildi\u011fi madde","Cam\u0131n \u0131\u015f\u0131\u011f\u0131 k\u0131ran \u015Fekli","Prizman\u0131n renk c\u00fcmb\u00fc\u015F\u00fc"]},
-  {id:5,d:"kolay",theme:"K\u00fc\u00e7\u00fck Evren",
-    chain:["DAMLA","OKYANUS","GEM\u0130","PUSULA","KUTUP"],
-    hints:["Okyanusun en k\u00fc\u00e7\u00fck par\u00e7as\u0131","Damlalar\u0131n sonsuz birli\u011fi","Okyanusu a\u015Fmak i\u00e7in yap\u0131lan ara\u00e7","Geminin y\u00f6n bulma arac\u0131","Pusulan\u0131n g\u00f6sterdi\u011fi yer"]},
-  {id:6,d:"orta",theme:"Zihnin Labirenti",
-    chain:["AYNA","YANSIMA","HAFIZA","R\u00dcYA","GER\u00c7EK","MASKE"],
-    hints:["Kendini g\u00f6rd\u00fc\u011f\u00fcn y\u00fczey","Aynan\u0131n geri verdi\u011fi","Yans\u0131malar\u0131n biriktigi depo","Haf\u0131zan\u0131n uykuda oynad\u0131\u011f\u0131 oyun","R\u00fcyadan uyan\u0131nca d\u00f6nd\u00fc\u011f\u00fcn","Ger\u00e7e\u011fi gizlemek i\u00e7in tak\u0131lan"]},
-  {id:7,d:"orta",theme:"Ate\u015Fin Miras\u0131",
-    chain:["VOLKAN","K\u00dcL","TOPRAK","SERAM\u0130K","M\u00dcZE","HATIRA"],
-    hints:["Da\u011f\u0131n \u00f6fkeli nefesi","Volkan\u0131n geride b\u0131rakt\u0131\u011f\u0131 toz","K\u00fcl\u00fcn kar\u0131\u015Ft\u0131\u011f\u0131 verimli zemin","Topraktan \u015Fekillenen sanat","Serami\u011fin korundu\u011fu mekan","M\u00fczenin b\u0131rakt\u0131\u011f\u0131 iz"]},
-  {id:8,d:"orta",theme:"Sessiz Dil",
-    chain:["G\u00d6ZYA\u015eI","TUZ","DEN\u0130Z","MERCAN","RENK","TABLO"],
-    hints:["Duygunun s\u0131v\u0131 hali","G\u00f6zya\u015f\u0131n\u0131n b\u0131rakt\u0131\u011f\u0131 kristal","Tuzun evine d\u00f6n\u00fc\u015F\u00fc","Denizin canl\u0131 mimarisi","Mercan\u0131n do\u011faya katt\u0131\u011f\u0131","Renklerin tuval \u00fczerinde bulu\u015Fmas\u0131"]},
-  {id:9,d:"orta",theme:"Zaman\u0131n Dokusu",
-    chain:["FOS\u0130L","TA\u015e","HEYKEL","G\u00d6LGE","G\u00dcNE\u015e","TAKV\u0130M"],
-    hints:["Zaman\u0131n ta\u015Fa kaz\u0131d\u0131\u011f\u0131 ya\u015Fam","Fosilin uyudu\u011fu yatak","Ta\u015Ftan yontulmu\u015F insan","Heykelin \u0131\u015F\u0131kla yaratt\u0131\u011f\u0131 karanl\u0131k","G\u00f6lgenin kayna\u011f\u0131 olan y\u0131ld\u0131z","G\u00fcne\u015fin hareketini izleyen d\u00fczen"]},
-  {id:10,d:"orta",theme:"Dokuma",
-    chain:["KOYUN","Y\u00dcN","\u0130PL\u0130K","HALI","DESEN","H\u0130KAYE"],
-    hints:["Y\u00fcn\u00fcn kayna\u011f\u0131 olan hayvan","Koyunun hediye etti\u011fi s\u0131cakl\u0131k","Y\u00fcn\u00fcn b\u00fck\u00fclm\u00fc\u015F hali","\u0130pli\u011fin dokunarak d\u00f6n\u00fc\u015ft\u00fc\u011f\u00fc","Hal\u0131n\u0131n \u00fczerindeki gizli dil","Desenin anlatt\u0131\u011f\u0131 kadim anlat\u0131"]},
-  {id:11,d:"orta",theme:"Do\u011fan\u0131n Mektubu",
-    chain:["POLEN","R\u00dcZGAR","TOHUM","\u00c7INAR","KA\u011eIT","MEKTUP"],
-    hints:["\u00c7i\u00e7e\u011fin havaya b\u0131rakt\u0131\u011f\u0131 mesaj","Poleni ta\u015f\u0131yan g\u00f6r\u00fcnmez g\u00fc\u00e7","R\u00fczgar\u0131n ta\u015f\u0131y\u0131p b\u0131rakt\u0131\u011f\u0131","Tohumun y\u00fczy\u0131llar sonraki hali","\u00c7\u0131nar\u0131n kesildikten sonraki formu","Ka\u011f\u0131d\u0131n duygu ta\u015F\u0131yan hali"]},
-  {id:12,d:"orta",theme:"Tersten Bak\u0131\u015F",
-    chain:["S\u0130S","KAYBOLMAK","PUSULA","Y\u00d6N","KARAR","GELECEK"],
-    hints:["G\u00f6rmemizi engelleyen beyaz perde","Sisin i\u00e7inde ya\u015Fanan","Kaybolunca aranan rehber","Pusulan\u0131n g\u00f6sterdi\u011fi","Y\u00f6n\u00fcn\u00fc belirleyince vermen gereken","Kararlar\u0131n toplam\u0131n\u0131n olu\u015Fturdu\u011fu"]},
-  {id:13,d:"zor",theme:"Evrenin F\u0131s\u0131lt\u0131s\u0131",
-    chain:["SESS\u0130ZL\u0130K","T\u0130TRE\u015e\u0130M","ATOM","YILDIZ","I\u015eIK","G\u00d6Z","B\u0130L\u0130N\u00c7"],
-    hints:["Evrenin ba\u015Flang\u0131c\u0131ndaki bo\u015Fluk","Sessizli\u011fi bozan ilk hareket","Titre\u015Fimin en k\u00fc\u00e7\u00fck birimi","Atomlar\u0131n parlayarak olu\u015Fturdu\u011fu","Y\u0131ld\u0131z\u0131n evrene yayd\u0131\u011f\u0131 mesaj","I\u015f\u0131\u011f\u0131 yakalayan biyolojik alet","G\u00f6z\u00fcn arkas\u0131nda anlam yaratan g\u00fc\u00e7"]},
-  {id:14,d:"zor",theme:"Unutulan \u00c7a\u011f",
-    chain:["MA\u011eARA","DUVAR","RES\u0130M","SEMBOL","ALFABE","K\u0130TAP","K\u00dcT\u00dcPHANE"],
-    hints:["\u0130lk insanlar\u0131n s\u0131\u011f\u0131na\u011f\u0131","Ma\u011faran\u0131n boyanan y\u00fczeyi","Duvara \u00e7izilen ilk ifade","Resmin soyutla\u015Fm\u0131\u015F hali","Sembollerin d\u00fczenli sistemi","Alfabenin sayfalar aras\u0131nda ya\u015Famas\u0131","Kitaplar\u0131n korundu\u011fu tap\u0131nak"]},
-  {id:15,d:"zor",theme:"Duygunun Kimyas\u0131",
-    chain:["KALP","KAN","KIRMIZI","G\u00dcL","D\u0130KEN","ACI","OLGUNLUK"],
-    hints:["Duygunun pompaland\u0131\u011f\u0131 motor","Kalbin v\u00fccuda yayd\u0131\u011f\u0131 s\u0131v\u0131","Kan\u0131n rengi","K\u0131rm\u0131z\u0131n\u0131n en romantik sembol\u00fc","G\u00fcl\u00fcn gizli silah\u0131","Dikenin bat\u0131nca verdi\u011fi","Ac\u0131lar\u0131n bizi getirdi\u011fi nokta"]},
+// API
+function callAI(prompt,mt){
+  if(!mt)mt=600;
+  return fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:MODEL,max_tokens:mt,messages:[{role:"user",content:prompt}]})}).then(function(r){if(!r.ok)throw new Error("API "+r.status);return r.json()}).then(function(d){var b=d.content&&d.content.find(function(x){return x.type==="text"});return(b&&b.text&&b.text.trim())||""});
+}
+
+function gDiff(n){if(n<=5)return{d:"kolay",cs:3};if(n<=25)return{d:"orta",cs:4};return{d:"zor",cs:5};}
+
+function genLvl(num){
+  var info=gDiff(num);
+  var ce=Array(info.cs).fill("KELIME").join('","');
+  var he=Array(info.cs+2).fill("ipucu").join('","');
+  return callAI(
+    'Turkce kelime zinciri bulmacasi uret. Seviye '+num+', zorluk: '+info.d+'.\n\n'+
+    'SADECE JSON dondur:\n{"chain":["BAS","'+ce+'","SON"],"hints":["'+he+'"],"theme":"Tema","category":"Kategori"}\n\n'+
+    'KURALLAR:\n- chain dizisi: baslangic + '+info.cs+' ara + bitis = toplam '+(info.cs+2)+' kelime\n- hints dizisi: HER kelime icin 1 ipucu (chain ile ayni uzunlukta)\n- Tum kelimeler TURKCE, BUYUK HARF, yaygin\n- Her komsu kelime arasinda YARATICI ve GUCLÜ kavramsal bag\n- Cok bariz/kolay baglanti KURMA, yaratici dusun\n- Bilimsel olarak YANLIS baglanti KURMA\n- Ipuclari: kelimeyi vermeden sezdiren siirsel 1 cumle\n- JSON disinda HICBIR sey yazma',800
+  ).then(function(txt){
+    var c=txt.replace(/```json|```/g,"").trim();
+    var p=JSON.parse(c);
+    if(!p.chain||!p.hints||p.chain.length!==(info.cs+2)||p.hints.length!==p.chain.length)throw new Error("Bad");
+    return{chain:p.chain,hints:p.hints,theme:p.theme||"",category:p.category||"",id:num,difficulty:info.d};
+  });
+}
+
+function getAIHint(target,hint,prev,next){
+  return callAI(
+    'Turkce kelime bulmacasi. Hedef: "'+target+'" (SOYLEME!)\nMevcut ipucu: "'+hint+'"\nOnceki: "'+(prev||"?")+'" → [?] → Sonraki: "'+(next||"?")+'"\nKelimeyi soylemeden sezgisel 1-2 cumle ipucu yaz. Sadece ipucu metnini dondur.',150
+  ).then(null,function(e){return target.length+' harfli, "'+target[0]+'" ile basliyor.'});
+}
+
+function explainCh(chain){
+  return callAI('Bu kelime zincirinin anlam yolculugunu siirsel 2-3 cumleyle anlat:\n'+chain.join(' → ')+'\nSadece aciklamayi yaz.',250)
+    .then(null,function(e){return'Takimyildizi tamamlandi! Kavramlar arasindaki kozmik kopru kuruldu.'});
+}
+
+// ══════ BASE LEVELS — harder, more creative chains ══════
+// ALL words in chain[] including start/end. hints[] matches 1:1.
+var BASE=[
+  {id:1,difficulty:"kolay",theme:"Görünmeyen Bağ",category:"Doğa",
+   chain:["İPEK","BÖCEK","ÇIÇEK","BAL","PETEK"],
+   hints:["Yumuşacık dokunuşlu değerli kumaş","İpeği üreten küçük yaratık","Böceğin ziyaret ettiği renkli güzellik","Çiçekten toplanan tatlı hazine","Balın saklandığı altıgen yapı"]},
+  {id:2,difficulty:"kolay",theme:"Sesin İzi",category:"Sanat",
+   chain:["KULAK","MELODİ","PARMAK","TEL","GİTAR"],
+   hints:["Sesin girdiği kapı","Kulağa hoş gelen dizi","Melodiyi çalmak için uzanan","Parmağın dokunduğu ince hat","Tellerin bir araya geldiği enstrüman"]},
+  {id:3,difficulty:"kolay",theme:"Derinlik",category:"Doğa",
+   chain:["DALGA","KUMSAL","KABUK","İNCİ","TAÇ"],
+   hints:["Denizin kıyıya uzanan eli","Dalganın öptüğü yer","Kumsalda bulunan deniz hediyesi","Kabuğun içinde saklanan hazine","İncinin süslediği asil başlık"]},
+  {id:4,difficulty:"kolay",theme:"Zıtların Dansı",category:"Felsefe",
+   chain:["GÖLGE","IŞIK","CAM","KIRIŞ","GÖKKUŞAĞI"],
+   hints:["Karanlığın bedenimize yapışanı","Gölgeyi yok eden güç","Işığın geçebildiği saydam madde","Camdan geçen ışık demeti","Kırışın gökyüzündeki renk cümbüşü"]},
+  {id:5,difficulty:"kolay",theme:"Küçük Evren",category:"Bilim",
+   chain:["DAMLA","OKYANUS","GEMİ","PUSULA","KUTUP"],
+   hints:["Okyanusun en küçük parçası","Damlaların sonsuz birlikteliği","Okyanusu aşmak için yapılan araç","Geminin yön bulma aracı","Pusulanın her zaman gösterdiği yer"]},
+  {id:6,difficulty:"orta",theme:"Zihnin Labirenti",category:"Felsefe",
+   chain:["AYNA","YANSIMA","HAFIZA","RÜYA","GERÇEK","MASKE"],
+   hints:["Kendini gördüğün yüzey","Aynanın sana geri verdiği","Yansımaların biriktiği depo","Hafızanın uykuda oynadığı oyun","Rüyadan uyanınca döndüğün","Gerçeği gizlemek için takılan"]},
+  {id:7,difficulty:"orta",theme:"Ateşin Mirası",category:"Tarih",
+   chain:["VOLKAN","KÜL","TOPRAK","SERAMIK","MÜZE","HATIRA"],
+   hints:["Dağın öfkeli nefesi","Volkanın geride bıraktığı toz","Külün karıştığı verimli zemin","Topraktan şekillenen sanat","Seramiğin korunduğu kutsal mekan","Müzenin ziyaretçiye bıraktığı iz"]},
+  {id:8,difficulty:"orta",theme:"Sessiz Dil",category:"İletişim",
+   chain:["GÖZYAŞI","TUZ","DENİZ","MERCAN","RENK","TABLO"],
+   hints:["Duygunun sıvı hali","Gözyaşının bıraktığı kristal","Tuzun evine dönüşü","Denizin canlı mimarisi","Mercanın doğaya kattığı","Renklerin tuval üzerinde buluşması"]},
+  {id:9,difficulty:"orta",theme:"Zamanın Dokusu",category:"Felsefe",
+   chain:["FOSİL","TAŞ","HEYKEL","GÖLGE","GÜNEŞ","TAKVİM"],
+   hints:["Zamanın taşa kazıdığı yaşam","Fosilin içinde uyuduğu yatak","Taştan yontulmuş insan","Heykelin ışıkla yarattığı karanlık","Gölgenin kaynağı olan yıldız","Güneşin hareketini izleyen düzen"]},
+  {id:10,difficulty:"orta",theme:"Dokuma",category:"Kültür",
+   chain:["KOYUN","YÜN","İPLİK","HALI","DESEN","HİKAYE"],
+   hints:["Yünün kaynağı olan hayvan","Koyunun hediye ettiği sıcaklık","Yünün bükülmüş hali","İpliğin dokunarak dönüştüğü","Halının üzerindeki gizli dil","Desenin anlattığı kadim anlatı"]},
+  {id:11,difficulty:"orta",theme:"Biyoloji Şiiri",category:"Bilim",
+   chain:["POLEN","RÜZGAR","TOHUM","ÇINAR","KAĞIT","MEKTUP"],
+   hints:["Çiçeğin havaya bıraktığı mesaj","Poleni taşıyan görünmez güç","Rüzgarın taşıyıp bıraktığı potansiyel","Tohumun yüzyıllar sonraki hali","Çınarın kesildikten sonraki formu","Kağıdın duygu taşıyan hali"]},
+  {id:12,difficulty:"orta",theme:"Tersten Bakış",category:"Felsefe",
+   chain:["SİS","KAYBOLMAK","PUSULA","YON","KARAR","GELECEK"],
+   hints:["Görmemizi engelleyen beyaz perde","Sisin içinde yaşanan","Kaybolunca aranan rehber","Pusulanın gösterdiği","Yönünü belirleyince vermen gereken","Kararların toplamının oluşturduğu"]},
+  {id:13,difficulty:"zor",theme:"Evrenin Fısıltısı",category:"Bilim",
+   chain:["SESSIZLIK","TİTREŞIM","ATOM","YILDIZ","IŞIK","GÖZ","BİLİNÇ"],
+   hints:["Evrenin başlangıcındaki boşluk","Sessizliği bozan ilk hareket","Titreşimin en küçük birimi","Atomların bir araya gelip parladığı","Yıldızın evrene yaydığı mesaj","Işığı yakalayan biyolojik alet","Gözün arkasında anlam yaratan güç"]},
+  {id:14,difficulty:"zor",theme:"Unutulan Çağ",category:"Tarih",
+   chain:["MAĞARA","DUVAR","RESİM","SEMBOL","ALFABE","KİTAP","KÜTÜPHANE"],
+   hints:["İlk insanların sığınağı","Mağaranın boyanan yüzeyi","Duvara çizilen ilk ifade","Resmin soyutlaşmış hali","Sembollerin düzenli sistemi","Alfabenin sayfalar arasında yaşaması","Kitapların bir arada korunduğu tapınak"]},
+  {id:15,difficulty:"zor",theme:"Duygunun Kimyası",category:"İnsan",
+   chain:["KALP","KAN","KIRMIZI","GÜL","DİKEN","ACI","OLGUNLUK"],
+   hints:["Duygunun pompalandığı motor","Kalbin vücuda yaydığı sıvı","Kanın rengi","Kırmızının en romantik sembolü","Gülün gizli silahı","Dikenin batınca verdiği","Acıların bizi getirdiği nokta"]},
 ];
 
-/* ─── SFX ─── */
-const sfxPlay=(type)=>{
-  try{
-    const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
-    const ctx=new C();const m=ctx.createGain();m.gain.value=0.06;m.connect(ctx.destination);const n=ctx.currentTime;
-    const t=(f,s,d,v=0.5)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(v,s+0.02);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(m);o.start(s);o.stop(s+d)};
-    if(type==='click'){t(880,n,0.04);t(1320,n+0.01,0.03)}
-    else if(type==='word'){[440,554,659,880].forEach((f,i)=>t(f,n+i*0.06,0.7))}
-    else if(type==='level'){for(let i=0;i<10;i++)t(220*Math.pow(1.4,i/2),n+i*0.04,2)}
-    else if(type==='error'){t(150,n,0.15,0.2)}
-    else if(type==='reward'){[587,740,880,1175].forEach((f,i)=>t(f,n+i*0.04,0.9,0.35))}
-  }catch(e){}
+// ══════ SFX ══════
+var SFX={ctx:null,
+  gc:function(){if(!this.ctx){var C=window.AudioContext||window.webkitAudioContext;if(C)this.ctx=new C()}if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();return this.ctx},
+  play:function(type){try{var c=this.gc();if(!c)return;var m=c.createGain();m.gain.value=.07;m.connect(c.destination);var n=c.currentTime;
+    function t(f,s,d,v){if(!v)v=.5;var o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(v,s+.02);g.gain.exponentialRampToValueAtTime(.001,s+d);o.connect(g);g.connect(m);o.start(s);o.stop(s+d)}
+    if(type==='click'){t(880,n,.04);t(1320,n+.01,.03)}
+    else if(type==='word'){[440,554,659,880].forEach(function(f,i){t(f,n+i*.06,.7)})}
+    else if(type==='level'){for(var i=0;i<10;i++)t(220*Math.pow(1.4,i/2),n+i*.04,2)}
+    else if(type==='hint'){for(var j=0;j<3;j++)t(500+Math.random()*800,n+Math.random()*.2,.1,.12)}
+    else if(type==='streak'){[554,698,880,1108].forEach(function(f,i){t(f,n+i*.05,.7)})}
+    else if(type==='error'){var o2=c.createOscillator(),g2=c.createGain();o2.type='sine';o2.frequency.setValueAtTime(150,n);o2.frequency.linearRampToValueAtTime(80,n+.15);g2.gain.setValueAtTime(0,n);g2.gain.linearRampToValueAtTime(.2,n+.02);g2.gain.linearRampToValueAtTime(0,n+.15);o2.connect(g2);g2.connect(m);o2.start(n);o2.stop(n+.15)}
+    else if(type==='reward'){[587,740,880,1175].forEach(function(f,i){t(f,n+i*.04,.9,.35)})}
+  }catch(e){}}
 };
 
-/* ─── MUSIC ─── */
-let mCtx=null,mGain=null,mOscs=[],mTimers=[],mOn=false;
-const mStart=()=>{
-  if(mOn)return;
-  try{
-    const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
-    mCtx=new C();if(mCtx.state==='suspended')mCtx.resume();
-    mGain=mCtx.createGain();mGain.gain.setValueAtTime(0,mCtx.currentTime);mGain.gain.linearRampToValueAtTime(0.015,mCtx.currentTime+5);mGain.connect(mCtx.destination);mOn=true;mOscs=[];
-    [130.81,164.81,196].forEach((f,i)=>{const o=mCtx.createOscillator(),g=mCtx.createGain();o.type='sine';o.frequency.value=f;g.gain.value=[0.25,0.18,0.12][i];o.connect(g);g.connect(mGain);o.start();mOscs.push(o)});
-    const notes=[261.63,329.63,392,440,523.25];
-    const play=()=>{if(!mOn||!mCtx)return;const now=mCtx.currentTime;for(let i=0;i<2;i++){const f=notes[Math.floor(Math.random()*notes.length)];const o=mCtx.createOscillator(),g=mCtx.createGain();o.type='sine';o.frequency.value=f;const s=now+i*0.8,d=3+Math.random()*2;g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(0.01,s+0.5);g.gain.linearRampToValueAtTime(0,s+d);o.connect(g);g.connect(mGain);o.start(s);o.stop(s+d+0.1)}mTimers.push(setTimeout(play,10000+Math.random()*12000))};
-    mTimers.push(setTimeout(play,5000));
-  }catch(e){}
-};
-const mStop=()=>{mOn=false;mTimers.forEach(t=>clearTimeout(t));mTimers=[];if(mGain&&mCtx){try{mGain.gain.linearRampToValueAtTime(0,mCtx.currentTime+1)}catch(e){}}setTimeout(()=>{mOscs.forEach(o=>{try{o.stop()}catch(e){}});mOscs=[];try{if(mCtx)mCtx.close()}catch(e){};mCtx=null;mGain=null},1500)};
-
-/* ─── API ─── */
-const callAI=async(prompt,mt=600)=>{
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:MODEL,max_tokens:mt,messages:[{role:"user",content:prompt}]})});
-  if(!r.ok)throw new Error("API "+r.status);const d=await r.json();const b=(d.content||[]).find(x=>x.type==="text");return(b&&b.text)?b.text.trim():""
-};
-const getAIHint=async(target,hint)=>{
-  try{return await callAI(`Kelime bulmacasi ipucu. Hedef: "${target}" (SOYLEME!). Mevcut: "${hint}". Kelimeyi soylemeden 1-2 cumle ipucu yaz.`,150)}
-  catch(e){return `${target.length} harfli, "${target[0]}" ile basliyor.`}
+// ══════ MUSIC ══════
+var MUS={ctx:null,master:null,on:false,oscs:[],ts:[],
+  start:function(){if(this.on)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C)return;this.ctx=new C();if(this.ctx.state==='suspended')this.ctx.resume();this.master=this.ctx.createGain();this.master.gain.setValueAtTime(0,this.ctx.currentTime);this.master.gain.linearRampToValueAtTime(.02,this.ctx.currentTime+5);this.master.connect(this.ctx.destination);this.on=true;this.oscs=[];
+    var fs=[130.81,164.81,196];var vs=[.25,.18,.12];
+    for(var i=0;i<fs.length;i++){var o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type='sine';o.frequency.value=fs[i];g.gain.value=vs[i];o.connect(g);g.connect(this.master);o.start();this.oscs.push({o:o,g:g})}
+    this._mel()}catch(e){}},
+  _mel:function(){var self=this;var ns=[261.63,329.63,392,440,523.25];
+    function pl(){if(!self.on||!self.ctx)return;var now=self.ctx.currentTime;var cnt=2+Math.floor(Math.random()*2);
+      for(var i=0;i<cnt;i++){var f=ns[Math.floor(Math.random()*ns.length)];var o=self.ctx.createOscillator(),g=self.ctx.createGain();o.type='sine';o.frequency.value=f;var s=now+i*.8;var d=3+Math.random()*2;g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(.012,s+.5);g.gain.linearRampToValueAtTime(0,s+d);o.connect(g);g.connect(self.master);o.start(s);o.stop(s+d+.1)}
+      self.ts.push(setTimeout(pl,10000+Math.random()*12000))}
+    self.ts.push(setTimeout(pl,5000))},
+  stop:function(){this.on=false;this.ts.forEach(function(t){clearTimeout(t)});this.ts=[];
+    if(this.master&&this.ctx){try{this.master.gain.linearRampToValueAtTime(0,this.ctx.currentTime+1)}catch(e){}}
+    var self=this;setTimeout(function(){self.oscs.forEach(function(x){try{x.o.stop()}catch(e){}try{x.o.disconnect()}catch(e){}});self.oscs=[];try{if(self.ctx)self.ctx.close()}catch(e){};self.ctx=null;self.master=null},1500)},
+  toggle:function(v){if(v&&!this.on)this.start();else if(!v&&this.on)this.stop()}
 };
 
-/* ─── APP ─── */
-function App(){
-  const[user,setUser]=useState(null);
-  const[screen,setScreen]=useState('AUTH');
-  const[lvl,setLvl]=useState(0);
-  const[lvlData,setLvlData]=useState(null);
-  const[maxL,setMaxL]=useState(0);
-  const[found,setFound]=useState([]);
-  const[guesses,setGuesses]=useState({});
-  const[sel,setSel]=useState(null);
-  const[hintN,setHintN]=useState(new Set());
-  const[streak,setStreak]=useState(0);
-  const[showWin,setShowWin]=useState(false);
-  const[winExpl,setWinExpl]=useState('');
-  const[loadExpl,setLoadExpl]=useState(false);
-  const[toast,setToast]=useState(null);
-  const[dust,setDust]=useState(15);
-  const[sfxOn,setSfxOn]=useState(true);
-  const[musOn,setMusOn]=useState(false);
-  const[aiTxt,setAiTxt]=useState(null);
-  const[loadAI,setLoadAI]=useState(false);
-  const[animStar,setAnimStar]=useState(null);
-  const[hIdx,setHIdx]=useState(null);
-  const sfxRef=useRef(true);
-  const sRefs=useRef([]);
-  const[authMode,setAuthMode]=useState('login');
-  const[authEmail,setAuthEmail]=useState('');
-  const[authName,setAuthName]=useState('');
-  const[authErr,setAuthErr]=useState(null);
+// ══════ COMPONENTS ══════
+var BG=memo(function BG(p){return(
+  <React.Fragment>
+    <div className="fixed inset-0 z-0" style={{background:'radial-gradient(ellipse 90% 60% at 50% 25%,#0c0c2a 0%,#060618 40%,#030311 75%)'}}/>
+    <div className="fixed inset-0 z-0 overflow-hidden"><div className="absolute rounded-full blur-3xl" style={{width:'500px',height:'500px',background:'radial-gradient(circle,rgba(167,139,250,.04),transparent)',top:'-5%',left:'-10%'}}/><div className="absolute rounded-full blur-3xl" style={{width:'400px',height:'400px',background:'radial-gradient(circle,rgba(246,197,83,.03),transparent)',bottom:'-5%',right:'-10%'}}/></div>
+    <div className="fixed inset-0 z-0">{p.s.map(function(s){return <div key={s.id} className="absolute rounded-full" style={{left:s.left+'%',top:s.top+'%',width:s.sz+'px',height:s.sz+'px',backgroundColor:s.hue,boxShadow:'0 0 '+s.sz*2+'px '+s.hue,animation:'twinkle '+s.dur+'s '+s.del+'s infinite'}}/>})}</div>
+    <div className="fixed inset-0 z-0">{p.sh.map(function(s){return(<div key={s.id} className="absolute" style={{left:s.left+'%',top:s.top+'%',animation:'shootStar 2.5s ease-out forwards'}}><div className="w-1 h-1 bg-white rounded-full" style={{boxShadow:'0 0 5px 2px white'}}/><div className="absolute top-1/2 left-0 h-px -translate-y-1/2" style={{width:'160px',background:'linear-gradient(to left,transparent,rgba(246,197,83,.08),white)'}}/></div>)})}</div>
+  </React.Fragment>
+)});
 
-  useEffect(()=>{sfxRef.current=sfxOn},[sfxOn]);
-  const sfx=(t)=>{if(sfxRef.current)sfxPlay(t)};
+function Toast(p){useEffect(function(){var t=setTimeout(p.onDone,2800);return function(){clearTimeout(t)}},[p.onDone]);return <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-5 py-2.5 card rounded-full text-xs font-medium tracking-wider text-white/80 afd shadow-2xl whitespace-nowrap">{p.msg}</div>}
 
-  // Music
-  useEffect(()=>{if(musOn)mStart();else mStop();return()=>mStop()},[musOn]);
-
-  // Toast auto-clear
-  useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(null),2500);return()=>clearTimeout(t)}},[toast]);
-
-  // Init
-  useEffect(()=>{
-    const em=LS.g('cur');
-    if(em){const us=LS.g('users',{});if(us[em]){doAuth(us[em]);return}}
-  },[]);
-
-  const doAuth=(u)=>{setUser(u);setLvl(u.level||0);setMaxL(u.maxLevel||0);setDust(u.dust||15);setStreak(u.streak||0);setScreen('HOME')};
-  const save=(up={})=>{const em=LS.g('cur');if(!em)return;const us=LS.g('users',{});const u=us[em];if(!u)return;Object.assign(u,up);us[em]=u;LS.s('users',us)};
-  useEffect(()=>{if(user)save({level:lvl,maxLevel:maxL,dust,streak})},[lvl,maxL,dust,streak]);
-
-  // Load level
-  useEffect(()=>{
-    if(!user)return;
-    setFound([]);setGuesses({});setSel(null);setShowWin(false);setWinExpl('');setToast(null);setAnimStar(null);setHIdx(null);setAiTxt(null);setHintN(new Set());
-    const b=BASE.find(l=>l.id===(lvl+1));
-    setLvlData(b||BASE[lvl%15]);
-  },[lvl,user]);
-
-  const chain=lvlData?lvlData.chain:[];
-  const hints=lvlData?lvlData.hints:[];
-  const total=chain.length;
-  const shape=useMemo(()=>getSh(total,lvl),[total,lvl]);
-
-  // ── Game logic ──
-  const nodeClick=(i)=>{sfx('click');if(found.includes(i))return;if(i>0&&!found.includes(i-1)){sfx('error');setToast("\u00d6nce \u00f6nceki y\u0131ld\u0131z\u0131 ayd\u0131nlat");return}setSel(i);setToast(null);setAiTxt(null)};
-
-  const procInput=(val)=>{if(sel===null)return;sfx('click');const target=chain[sel];const upper=val.toLocaleUpperCase('tr-TR');if(upper.length<=target.length){setGuesses(g=>({...g,[sel]:upper}));if(upper===target)correct(sel)}};
-
-  const doBack=()=>{sfx('click');if(sel===null)return;const c=guesses[sel]||'';if(c.length>0)setGuesses(g=>({...g,[sel]:c.slice(0,-1)}))};
-
-  const correct=(idx)=>{
-    sfx('word');const nf=[...found,idx];setFound(nf);
-    const used=hintN.has(idx);setDust(d=>d+1+(used?0:1));sfx('reward');
-    if(!used){const ns=streak+1;setStreak(ns);if(ns>0&&ns%3===0){setDust(d=>d+1);setToast(`\uD83D\uDD25 ${ns} seri! +1 bonus`)}}else setStreak(0);
-    setTimeout(()=>{setSel(null);if(nf.length===total){setTimeout(async()=>{sfx('level');setShowWin(true);setLoadExpl(true);try{const e=await callAI(`Bu kelime zincirinin anlam yolculugunu 2-3 cumleyle anlat: ${chain.join(" \u2192 ")}`,250);setWinExpl(e)}catch(e){setWinExpl("Tak\u0131my\u0131ld\u0131z\u0131 tamamland\u0131!")}setLoadExpl(false)},400)}},400)
-  };
-
-  const doLH=()=>{
-    if(sel===null||animStar)return;if(dust<1){sfx('error');setToast("Y\u0131ld\u0131z tozu yetersiz");return}sfx('click');setHintN(s=>new Set(s).add(sel));
-    const target=chain[sel],cur=(guesses[sel]||'').toLocaleUpperCase('tr-TR');let ni=0;for(let i=0;i<target.length;i++){if(cur[i]!==target[i]){ni=i;break}ni=i+1}if(ni>=target.length)return;
-    setDust(d=>d-1);const sl=sRefs.current[ni];if(!sl)return;const r=sl.getBoundingClientRect();const sx=window.innerWidth*0.85,sy=40;
-    setAnimStar({sx,sy,tx:r.left+r.width/2-sx,ty:r.top+r.height/2-sy});
-    setTimeout(()=>{const nc=target[ni],nv=cur.substring(0,ni)+nc+cur.substring(ni+1);setGuesses(g=>({...g,[sel]:nv}));setHIdx(ni);setTimeout(()=>setHIdx(null),800);if(nv===target)correct(sel);setAnimStar(null)},1700)
-  };
-
-  const doAI=async()=>{
-    if(sel===null)return;if(dust<2){sfx('error');setToast("Yetersiz (2 gerekli)");return}sfx('click');setHintN(s=>new Set(s).add(sel));setDust(d=>d-2);setLoadAI(true);setAiTxt(null);
-    const h=await getAIHint(chain[sel],hints[sel]);setAiTxt(h);setLoadAI(false)
-  };
-
-  const doReveal=()=>{
-    if(sel===null)return;if(dust<3){sfx('error');setToast("Yetersiz (3 gerekli)");return}sfx('click');setHintN(s=>new Set(s).add(sel));setDust(d=>d-3);setGuesses(g=>({...g,[sel]:chain[sel]}));correct(sel)
-  };
-
-  const nextLvl=()=>{sfx('click');setDust(d=>d+3);const n=lvl+1;if(n>maxL)setMaxL(n);setLvl(n<MAXL?n:0);setScreen('PLAY');setShowWin(false)};
-
-  /* ═══ AUTH ═══ */
-  if(screen==='AUTH'){
-    const doReg=()=>{if(!authName.trim()){setAuthErr("\u0130sim gerekli");return}if(!authEmail.includes('@')){setAuthErr("Ge\u00e7erli e-posta gir");return}const em=authEmail.trim().toLowerCase();const us=LS.g('users',{});if(us[em]){setAuthErr("Zaten kay\u0131tl\u0131");return}const u={name:authName.trim().toLocaleUpperCase('tr-TR'),email:em,dust:15,level:0,maxLevel:0,streak:0};us[em]=u;LS.s('users',us);LS.s('cur',em);doAuth(u)};
-    const doLog=()=>{if(!authEmail.trim()){setAuthErr("E-posta gir");return}const em=authEmail.trim().toLowerCase();const us=LS.g('users',{});if(!us[em]){setAuthErr("Bulunamad\u0131");return}LS.s('cur',em);doAuth(us[em])};
-    return(
-      <div className="fixed inset-0 flex items-center justify-center p-5" style={{background:'radial-gradient(ellipse at 50% 30%,#12122e,#0a0a1a)'}}>
-        <div className="flex flex-col items-center gap-6 w-full max-w-sm">
-          <div className="text-center"><BrainCircuit size={40} style={{color:'#f6c553',margin:'0 auto 12px'}}/><h1 className="fh text-4xl font-bold" style={{background:'linear-gradient(135deg,#f6c553,#fff,#a78bfa)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Y\u0131ld\u0131z A\u011f\u0131</h1></div>
-          <div className="w-full rounded-2xl p-5" style={{background:'rgba(8,8,28,0.95)',border:'1px solid rgba(255,255,255,0.06)'}}>
-            <div className="flex gap-1 mb-4 p-1 rounded-xl" style={{background:'rgba(255,255,255,0.04)'}}>
-              <button onClick={()=>{setAuthMode('login');setAuthErr(null)}} className={`flex-1 py-2.5 rounded-lg text-xs font-bold tracking-widest ${authMode==='login'?'bg-white/10 text-white':'text-white/25'}`}>G\u0130R\u0130\u015e</button>
-              <button onClick={()=>{setAuthMode('register');setAuthErr(null)}} className={`flex-1 py-2.5 rounded-lg text-xs font-bold tracking-widest ${authMode==='register'?'bg-white/10 text-white':'text-white/25'}`}>KAYIT</button>
-            </div>
-            {authMode==='register'&&<div className="mb-3 relative"><User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/15"/><input value={authName} onChange={e=>setAuthName(e.target.value)} placeholder="\u0130smin..." className="w-full rounded-xl py-3.5 pl-9 pr-3 text-sm fm outline-none bg-white/5 border border-white/6 text-white placeholder:text-white/15"/></div>}
-            <div className="mb-3 relative"><Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/15"/><input type="email" value={authEmail} onChange={e=>{setAuthEmail(e.target.value);setAuthErr(null)}} onKeyDown={e=>{if(e.key==='Enter')authMode==='register'?doReg():doLog()}} placeholder="E-posta..." className="w-full rounded-xl py-3.5 pl-9 pr-3 text-sm fm outline-none bg-white/5 border border-white/6 text-white placeholder:text-white/15"/></div>
-            {authErr&&<p className="text-rose-400 text-xs text-center mb-2">{authErr}</p>}
-            <button onClick={authMode==='register'?doReg:doLog} className="w-full py-4 rounded-xl text-base font-bold tracking-widest" style={{background:'#f6c553',color:'#0a0a1a'}}>{authMode==='register'?'KAYIT OL':'G\u0130R\u0130\u015e YAP'}</button>
-          </div>
-        </div>
+function Confirm(p){if(!p.cfg)return null;return(
+  <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-5" onClick={p.onNo}>
+    <div className="card rounded-3xl p-6 max-w-sm w-full shadow-2xl af" onClick={function(e){e.stopPropagation()}}>
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{background:p.cfg.bg}}>{p.cfg.icon}</div>
+        <div><h3 className="fh text-2xl font-bold">{p.cfg.title}</h3><p className="text-white/25 text-sm mt-1">{p.cfg.body}</p></div>
+        <div className="flex gap-2 w-full"><button onClick={p.onNo} className="flex-1 py-3 rounded-xl border border-white/5 text-white/30 text-xs font-semibold tracking-widest">İPTAL</button><button onClick={p.onYes} className={"flex-1 py-3 rounded-xl text-white text-xs font-semibold tracking-widest "+p.cfg.cls}>{p.cfg.label}</button></div>
       </div>
-    );
-  }
+    </div>
+  </div>
+)}
 
-  /* ═══ HOME ═══ */
-  if(screen==='HOME'){
-    return(
-      <div className="fixed inset-0 flex items-center justify-center p-5" style={{background:'radial-gradient(ellipse at 50% 30%,#12122e,#0a0a1a)'}}>
-        <div className="flex flex-col items-center gap-5 w-full max-w-sm">
-          <div className="text-center"><BrainCircuit size={32} style={{color:'#f6c553',margin:'0 auto 8px'}}/><h1 className="fh text-3xl font-bold" style={{background:'linear-gradient(135deg,#f6c553,#fff,#a78bfa)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Y\u0131ld\u0131z A\u011f\u0131</h1></div>
-          <div className="w-full rounded-2xl p-5" style={{background:'rgba(8,8,28,0.95)',border:'1px solid rgba(255,255,255,0.06)'}}>
-            <div className="flex items-center gap-3 mb-4 pb-3" style={{borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}><User size={16} style={{color:'#f6c553'}}/></div>
-              <div className="flex-1"><p className="font-bold text-sm">{user&&user.name}</p><p className="fm text-white/20" style={{fontSize:'9px'}}>{user&&user.email}</p></div>
-              <div className="flex items-center gap-1 px-3 py-1.5 rounded-full" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}><Sparkles size={12} style={{color:'#f6c553'}}/><span className="fm font-bold text-sm" style={{color:'#f6c553'}}>{dust}</span></div>
-            </div>
-            <div className="flex gap-2 mb-4">
-              <button onClick={()=>setSfxOn(s=>!s)} className="flex-1 py-3 rounded-xl text-xs font-bold tracking-widest flex items-center justify-center gap-2" style={{background:sfxOn?'rgba(167,139,250,0.08)':'rgba(255,255,255,0.03)',border:sfxOn?'1px solid rgba(167,139,250,0.2)':'1px solid rgba(255,255,255,0.05)',color:sfxOn?'#a78bfa':'rgba(255,255,255,0.2)'}}>
-                {sfxOn?<Volume2 size={14}/>:<VolumeX size={14}/>}EFEKT
-              </button>
-              <button onClick={()=>setMusOn(m=>!m)} className="flex-1 py-3 rounded-xl text-xs font-bold tracking-widest flex items-center justify-center gap-2" style={{background:musOn?'rgba(246,197,83,0.08)':'rgba(255,255,255,0.03)',border:musOn?'1px solid rgba(246,197,83,0.2)':'1px solid rgba(255,255,255,0.05)',color:musOn?'#f6c553':'rgba(255,255,255,0.2)'}}>
-                {musOn?<Music size={14}/>:<Music2 size={14}/>}M\u00dcZ\u0130K
-              </button>
-            </div>
-            <button onClick={()=>{sfx('click');setScreen('PLAY')}} className="w-full py-4 rounded-xl text-base font-bold tracking-widest mb-3" style={{background:'#f6c553',color:'#0a0a1a'}}>{maxL>0?'DEVAM ET':'BA\u015eLA'}</button>
-            <button onClick={()=>{LS.r('cur');setUser(null);setScreen('AUTH');mStop()}} className="w-full py-2.5 rounded-xl text-xs font-semibold tracking-widest text-white/15 flex items-center justify-center gap-1"><LogOut size={12}/>\u00c7IKI\u015e</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+function CosmicWelcome(p){var[ph,setPh]=useState(0);useEffect(function(){var t1=setTimeout(function(){setPh(1)},600);var t2=setTimeout(function(){setPh(2)},1800);var t3=setTimeout(function(){setPh(3)},3200);var t4=setTimeout(p.onDone,4500);return function(){clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);clearTimeout(t4)}},[]);return(
+  <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
+    <div className="absolute rounded-full" style={{width:'8px',height:'8px',background:'radial-gradient(circle,var(--goldGlow),rgba(167,139,250,.08),transparent)',transform:'scale('+(ph>=1?100:0)+')',opacity:ph>=3 ? 0.2 : 1,transition:'all 2.5s ease-out'}}/>
+    <div className="relative z-10 flex flex-col items-center gap-4" style={{opacity:ph>=1?1:0,transform:'scale('+(ph>=1?1:.4)+')',transition:'all 1s cubic-bezier(.34,1.56,.64,1)'}}>
+      {ph>=1&&<div style={{animation:'cosmicGrow 1s cubic-bezier(.34,1.56,.64,1) forwards'}}><BrainCircuit size={52} style={{color:'var(--gold)',filter:'drop-shadow(0 0 20px var(--goldGlow))'}}/></div>}
+      {ph>=2&&<h1 className="fh text-5xl md:text-6xl font-bold text-white" style={{animation:'titleIn 1.2s cubic-bezier(.16,1,.3,1) forwards'}}>Yıldız Ağı</h1>}
+      {ph>=2&&<p className="fm text-white/0 uppercase" style={{fontSize:'10px',animation:'subIn .8s .6s ease-out forwards',letterSpacing:'.5em'}}>kavramlar arası köprüler</p>}
+    </div>
+    {ph>=3&&<div className="absolute inset-0 bg-[#030311]" style={{transition:'opacity 1.2s',opacity:1}}/>}
+  </div>
+)}
 
-  /* ═══ PLAY ═══ */
+function Tutorial(p){var[s,setS]=useState(0);var st=[
+  {icon:<BrainCircuit size={24} style={{color:'var(--gold)'}}/>,t:"Yıldızları Keşfet",d:"Her bulmaca bir takımyıldızı. Tüm kelimeler gizli. İpuçlarını kullanarak kelimeleri bul — doğru cevap verdikçe yıldızlar arasında ışıklı bağlantılar belirir."},
+  {icon:<ArrowRight size={24} style={{color:'var(--purple)'}}/>,t:"Sırayla Çöz",d:"İlk yıldızdan başla, sırayla ilerle. Her kelime komşusuyla anlam bağı taşır."},
+  {icon:<Gift size={24} style={{color:'var(--gold)'}}/>,t:"Ödüller Kazan",d:"Her doğru cevap yıldız tozu kazandırır. İpucu kullanmadan çözersen bonus! Tozlarınla harf ipucu, AI ipucu veya tam çözüm al."},
+];var c=st[s];return(
+  <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/95 p-5"><div className="flex flex-col items-center gap-5 max-w-xs w-full text-center af">
+    <div className="w-14 h-14 rounded-2xl glass flex items-center justify-center">{c.icon}</div>
+    <div><h3 className="fh text-2xl font-bold">{c.t}</h3><p className="text-white/30 text-sm mt-2 leading-relaxed">{c.d}</p></div>
+    <div className="flex gap-1.5">{st.map(function(_,i){return <div key={i} className={"h-1 rounded-full transition-all "+(i===s?'w-6':'w-1.5')} style={{background:i===s?'var(--gold)':'rgba(255,255,255,.1)'}}/>})}</div>
+    <button onClick={function(){if(s<st.length-1)setS(s+1);else p.onDone()}} className="px-8 py-3 rounded-full font-semibold tracking-widest text-sm transition-transform hover:scale-105 active:scale-95" style={{background:'var(--gold)',color:'#030311'}}>
+      {s<st.length-1?'İLERİ':'BAŞLA'}</button>
+    {s<st.length-1&&<button onClick={p.onDone} className="text-white/10 text-xs tracking-widest">ATLA</button>}
+  </div></div>
+)}
+
+function AuthScreen(p){var[mode,setMode]=useState('login');var[email,setEmail]=useState('');var[name,setName]=useState('');var[err,setErr]=useState(null);var[shk,setShk]=useState(false);
+  function doShk(m){setErr(m);setShk(true);setTimeout(function(){setShk(false)},600)}
+  function doReg(){if(!name.trim())return doShk("İsim gerekli");if(!email.trim()||email.indexOf('@')===-1)return doShk("Geçerli e-posta gir");var em=email.trim().toLowerCase();var us=LS.g('users',{});if(us[em])return doShk("Zaten kayıtlı. Giriş yap.");var u={name:name.trim().toLocaleUpperCase('tr-TR'),email:em,dust:DI,level:0,maxLevel:0,streak:0,tw:0,tl:0};us[em]=u;LS.s('users',us);LS.s('cur',em);p.onAuth(u)}
+  function doLog(){if(!email.trim())return doShk("E-posta gir");var em=email.trim().toLowerCase();var us=LS.g('users',{});var u=us[em];if(!u)return doShk("Bulunamadı. Kayıt ol.");LS.s('cur',em);p.onAuth(u)}
   return(
-    <div className="fixed inset-0" style={{background:'radial-gradient(ellipse at 50% 25%,#0c0c2a,#060618 40%,#030311 75%)'}}>
-      {/* HUD */}
-      <div className="fixed top-0 left-0 right-0 z-30 p-3 flex justify-between items-center">
-        <div><h2 className="fh text-sm font-bold text-white/70">{user&&user.name}</h2><span className="fm text-white/20" style={{fontSize:'9px'}}>{String(lvl+1).padStart(2,'0')}/{MAXL}</span></div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={()=>setMusOn(m=>!m)} className="px-2 py-1.5 rounded-full" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)',color:musOn?'#f6c553':'rgba(255,255,255,0.15)'}}>{musOn?<Music size={13}/>:<Music2 size={13}/>}</button>
-          <button onClick={()=>setSfxOn(s=>!s)} className="px-2 py-1.5 rounded-full" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)',color:sfxOn?'#a78bfa':'rgba(255,255,255,0.15)'}}>{sfxOn?<Volume2 size={13}/>:<VolumeX size={13}/>}</button>
-          <div className="px-2.5 py-1.5 rounded-full flex items-center gap-1" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}><Sparkles size={12} style={{color:'#f6c553',opacity:0.6}}/><span className="fm font-bold" style={{fontSize:'12px',color:'rgba(246,197,83,0.6)'}}>{dust}</span></div>
-          <button onClick={()=>{sfx('click');setScreen('HOME')}} className="px-2 py-1.5 rounded-full text-white/20" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}><Home size={13}/></button>
+    <div className="fixed inset-0 overflow-hidden"><BG s={p.bgS} sh={p.sh}/>
+      <div className="relative z-20 flex flex-col items-center justify-center w-full h-full p-5">
+        <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+          <div className="flex flex-col items-center gap-2 afl"><div className="p-4 rounded-2xl glass"><BrainCircuit size={32} style={{color:'var(--gold)'}}/></div><h1 className="fh text-4xl font-bold gt tracking-wider">Yıldız Ağı</h1></div>
+          <div className="w-full card rounded-3xl p-5 shadow-2xl">
+            <div className="flex gap-1 mb-4 p-1 rounded-xl bg-white/5">
+              <button onClick={function(){setMode('login');setErr(null)}} className={"flex-1 py-2.5 rounded-lg text-xs font-semibold tracking-widest transition-all "+(mode==='login'?'bg-white/10 text-white':'text-white/20')}>GİRİŞ</button>
+              <button onClick={function(){setMode('register');setErr(null)}} className={"flex-1 py-2.5 rounded-lg text-xs font-semibold tracking-widest transition-all "+(mode==='register'?'bg-white/10 text-white':'text-white/20')}>KAYIT</button>
+            </div>
+            <div className={shk?'ash':''}>
+              {mode==='register'&&<div className="mb-3"><div className="relative"><User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/12"/><input type="text" value={name} onChange={function(e){setName(e.target.value)}} placeholder="İsmin..." className="w-full rounded-xl py-3.5 pl-9 pr-3 text-sm fm tracking-wider outline-none bg-white/5 border border-white/5 focus:border-amber-400/20 text-white placeholder:text-white/10"/></div></div>}
+              <div className="mb-3"><div className="relative"><Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/12"/><input type="email" value={email} onChange={function(e){setEmail(e.target.value);setErr(null)}} placeholder="E-posta..." onKeyDown={function(e){if(e.key==='Enter'){mode==='register'?doReg():doLog()}}} className="w-full rounded-xl py-3.5 pl-9 pr-3 text-sm fm tracking-wider outline-none bg-white/5 border border-white/5 focus:border-amber-400/20 text-white placeholder:text-white/10"/></div></div>
+              {err&&<p className="text-rose-400/60 text-xs text-center py-1">{err}</p>}
+              <button onClick={mode==='register'?doReg:doLog} className="w-full py-3.5 rounded-xl font-semibold tracking-widest text-sm transition-transform hover:scale-105 active:scale-95 shadow-lg mt-1" style={{background:'var(--gold)',color:'#030311'}}>
+                {mode==='register'?'KAYIT OL':'GİRİŞ YAP'}</button>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
+)}
 
-      {/* Toast */}
-      {toast&&<div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-5 py-2 rounded-full text-xs font-medium text-white/80 af" style={{background:'rgba(8,8,28,0.95)',border:'1px solid rgba(255,255,255,0.06)'}}>{toast}</div>}
-
-      {/* CONSTELLATION */}
-      <div className="absolute inset-0 pt-14 pb-4 px-4">
-        {/* SVG lines */}
-        <svg className="absolute inset-0 w-full h-full" style={{pointerEvents:'none',top:'56px',bottom:'16px',left:'16px',right:'16px',width:'calc(100% - 32px)',height:'calc(100% - 72px)'}}>
-          <defs>
-            <linearGradient id="gl"><stop offset="0%" stopColor="#f6c553" stopOpacity="0.8"/><stop offset="100%" stopColor="#a78bfa" stopOpacity="0.6"/></linearGradient>
-            <filter id="gf"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          </defs>
-          {shape.map((s,i)=>{
-            if(i>=total-1)return null;const ns=shape[i+1];const bothDone=found.includes(i)&&found.includes(i+1);
-            return(<g key={`l${i}`}>
-              <line x1={`${s.x}%`} y1={`${s.y}%`} x2={`${ns.x}%`} y2={`${ns.y}%`} stroke="rgba(167,139,250,0.15)" strokeWidth="1.5" strokeDasharray="6 10"/>
-              {bothDone&&<line x1={`${s.x}%`} y1={`${s.y}%`} x2={`${ns.x}%`} y2={`${ns.y}%`} stroke="url(#gl)" strokeWidth="3" filter="url(#gf)" strokeDasharray="500" style={{animation:'lineDraw 1s ease-out forwards'}}/>}
-            </g>)
-          })}
-        </svg>
-
-        {/* Nodes */}
-        {shape.map((s,i)=>{
-          const solved=found.includes(i);const isNext=!solved&&(i===0||found.includes(i-1));const locked=!solved&&!isNext;const isSel=sel===i;
-          return(
-            <div key={`n${i}`} onClick={()=>nodeClick(i)} className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-500 ${isNext?'cursor-pointer z-20':'z-10'} ${locked?'opacity-[0.06]':'opacity-100'}`} style={{left:`${s.x}%`,top:`calc(56px + ${s.y}% * (100% - 72px) / 100%)`,transform:`translate(-50%,-50%) scale(${isSel?1.2:isNext?1.1:1})`,gap:'10px'}}>
-              <div className={`relative flex items-center justify-center ${solved?'w-16 h-16':'w-12 h-12'}`}>
-                {solved&&<><div className="absolute -inset-2 rounded-full" style={{boxShadow:'0 0 30px rgba(246,197,83,0.2)',animation:'pulseGlow 3s infinite'}}/><div className="absolute inset-0 rounded-full" style={{border:'1px solid rgba(246,197,83,0.15)',animation:'ripple 4s ease-out infinite'}}/></>}
-                <div className={`w-full h-full rounded-full flex items-center justify-center border-2 ${isNext?'ang':''}`} style={{background:solved?'rgba(246,197,83,0.1)':isNext?'rgba(167,139,250,0.06)':'rgba(255,255,255,0.02)',borderColor:solved?'rgba(246,197,83,0.3)':isNext?'rgba(167,139,250,0.25)':'rgba(255,255,255,0.05)',boxShadow:solved?'0 0 20px rgba(246,197,83,0.15)':'none'}}>
-                  {solved?<Star size={18} fill="#f6c553" style={{color:'#f6c553'}}/>:isNext?<div className="w-3 h-3 rounded-full animate-pulse" style={{background:'#a78bfa',boxShadow:'0 0 12px rgba(167,139,250,0.2)'}}/>:<div className="w-1.5 h-1.5 rounded-full bg-white/8"/>}
-                </div>
-                {(isNext||isSel)&&<div className="absolute -inset-2 rounded-full aor" style={{border:'1px solid rgba(167,139,250,0.08)'}}/>}
-              </div>
-              <span className="font-bold tracking-widest px-3 py-1.5 rounded-full" style={{fontSize:'11px',color:solved?'rgba(246,197,83,0.9)':isNext?'rgba(167,139,250,0.8)':'rgba(255,255,255,0.06)',background:solved?'rgba(246,197,83,0.06)':isNext?'rgba(167,139,250,0.06)':'transparent',border:solved?'1px solid rgba(246,197,83,0.15)':isNext?'1px solid rgba(167,139,250,0.15)':'none'}}>{solved?chain[i]:"?"}</span>
-            </div>
-          )
+// ══════ CONSTELLATION ══════
+function Constellation(p){
+  var chain=p.chain;var found=p.found;var total=chain.length;
+  var shape=useMemo(function(){return getSh(total,p.lvl)},[total,p.lvl]);
+  return(
+    <div className="relative w-full h-full">
+      <svg className="absolute inset-0 w-full h-full" style={{pointerEvents:'none'}}>
+        <defs>
+          <linearGradient id="gl"><stop offset="0%" stopColor="var(--gold)" stopOpacity=".8"/><stop offset="100%" stopColor="var(--purple)" stopOpacity=".6"/></linearGradient>
+          <filter id="gf"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        {shape.map(function(s,i){
+          if(i>=total-1)return null;var ns=shape[i+1];
+          var bothDone=found.includes(i)&&found.includes(i+1);
+          return(<g key={'l'+i}>
+            <line x1={s.x+'%'} y1={s.y+'%'} x2={ns.x+'%'} y2={ns.y+'%'} stroke="rgba(167,139,250,.12)" strokeWidth="1.5" strokeDasharray="6 10"/>
+            {bothDone&&<line x1={s.x+'%'} y1={s.y+'%'} x2={ns.x+'%'} y2={ns.y+'%'} stroke="url(#gl)" strokeWidth="2.5" filter="url(#gf)" strokeDasharray="1000" style={{animation:'lineDraw 1s ease-out forwards'}}/>}
+          </g>)
         })}
-      </div>
-
-      {/* INPUT PANEL */}
-      {sel!==null&&(
-        <div className="fixed inset-0 z-40 flex items-end justify-center" style={{pointerEvents:'none'}}>
-          <div className="w-full flex flex-col items-center asu" style={{pointerEvents:'auto',background:'rgba(8,8,28,0.98)',borderRadius:'28px 28px 0 0',borderTop:'2px solid rgba(246,197,83,0.12)',maxHeight:'88vh'}}>
-            <div className="w-full px-4 pt-3 pb-1 flex items-start justify-between">
-              <div className="flex-1 text-center px-4"><p className="fm text-white/15 uppercase mb-1" style={{fontSize:'8px',letterSpacing:'0.4em'}}>BA\u011eLANTIYI KUR</p><p className="text-white/60" style={{fontSize:'15px',lineHeight:'1.5'}}>{hints[sel]}</p></div>
-              <button onClick={()=>{sfx('click');setSel(null);setAiTxt(null)}} className="text-white/20 hover:text-white/50 p-2"><X size={22}/></button>
-            </div>
-            {(aiTxt||loadAI)&&<div className="w-full px-4 pb-1 af"><div className="px-4 py-2.5 rounded-xl text-center" style={{background:'rgba(167,139,250,0.06)',border:'1px solid rgba(167,139,250,0.12)'}}>{loadAI?<div className="flex items-center justify-center gap-2" style={{color:'rgba(167,139,250,0.4)'}}><Loader2 size={14} className="animate-spin"/><span style={{fontSize:'12px'}}>D\u00fc\u015F\u00fcn\u00fcyor...</span></div>:<p style={{color:'rgba(167,139,250,0.7)',fontSize:'12px',lineHeight:'1.6',fontStyle:'italic'}}>{aiTxt}</p>}</div></div>}
-            <div className="relative w-full flex justify-center py-2 px-3">
-              <div className="flex gap-2.5 justify-center flex-wrap">
-                {Array.from({length:chain[sel].length}).map((_,ci)=>{const ch=(guesses[sel]||'')[ci];const isH=hIdx===ci;return(
-                  <div key={ci} ref={el=>{sRefs.current[ci]=el}} className="rounded-xl flex items-center justify-center fm font-bold" style={{width:'46px',height:'58px',fontSize:'26px',color:isH?'rgba(246,197,83,0.9)':ch?'white':'rgba(255,255,255,0.1)',background:isH?'rgba(246,197,83,0.12)':ch?'rgba(255,255,255,0.06)':'rgba(255,255,255,0.02)',border:isH?'2px solid rgba(246,197,83,0.35)':ch?'2px solid rgba(255,255,255,0.12)':'2px solid rgba(255,255,255,0.06)',...(isH?{animation:'letterPop 0.4s',boxShadow:'0 0 18px rgba(246,197,83,0.25)'}:{})}}>{ch||'\u00B7'}</div>
-                )})}
+      </svg>
+      {shape.map(function(s,i){
+        var isSolved=found.includes(i);
+        var isNext=!isSolved&&(i===0||found.includes(i-1));
+        var isLocked=!isSolved&&!isNext;
+        var isSel=p.sel===i;
+        var label=isSolved?chain[i]:"?";
+        return(
+          <div key={'n'+i} onClick={function(){p.onClick(i)}}
+            className={"absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-500 "+(isNext?'cursor-pointer z-20 ':'z-10 ')+(isLocked?'opacity-[.08]':'opacity-100')}
+            style={{left:s.x+'%',top:s.y+'%',transform:'translate(-50%,-50%) scale('+(isSel?1.2:isNext?1.1:1)+')',gap:'10px'}}>
+            <div className={"relative flex items-center justify-center transition-all duration-500 "+(isSolved?'w-16 h-16':'w-12 h-12')}>
+              {isSolved&&<React.Fragment>
+                <div className="absolute -inset-2 rounded-full" style={{boxShadow:'0 0 30px var(--goldGlow),0 0 60px rgba(246,197,83,.08)',animation:'pulseGlow 3s ease-in-out infinite'}}/>
+                <div className="absolute inset-0 rounded-full" style={{border:'1px solid rgba(246,197,83,.15)',animation:'ripple 4s ease-out infinite'}}/>
+              </React.Fragment>}
+              <div className={"relative w-full h-full rounded-full flex items-center justify-center border-2 transition-all duration-500 "+(isSolved?'border-amber-400/30 ':'')+(isNext?'border-violet-400/25 ang ':'')+(isLocked?'border-white/5 ':'')} style={isSolved?{background:'rgba(246,197,83,.08)',boxShadow:'0 0 20px var(--goldGlow)'}:isNext?{background:'rgba(167,139,250,.06)'}:{background:'rgba(255,255,255,.02)'}}>
+                {isSolved?<Star size={18} fill="var(--gold)" style={{color:'var(--gold)'}}/>:isNext?<div className="w-3 h-3 rounded-full animate-pulse" style={{background:'var(--purple)',boxShadow:'0 0 12px var(--purpleGlow)'}}/>:<div className="w-1.5 h-1.5 rounded-full bg-white/8"/>}
               </div>
+              {(isNext||isSel)&&<div className="absolute -inset-2 rounded-full aor" style={{border:'1px solid rgba(167,139,250,.08)'}}/>}
             </div>
-            <div className="flex gap-2 px-4 pb-2 w-full justify-center">
-              <button onClick={doLH} disabled={!!animStar||dust<1} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border disabled:opacity-15 active:scale-95" style={{background:'rgba(255,255,255,0.02)',borderColor:'rgba(246,197,83,0.2)',color:'#f6c553'}}><Lightbulb size={16}/><span className="font-bold" style={{fontSize:'12px'}}>HARF</span></button>
-              <button onClick={doAI} disabled={loadAI||dust<2} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border disabled:opacity-15 active:scale-95" style={{background:'rgba(255,255,255,0.02)',borderColor:'rgba(167,139,250,0.2)',color:'#a78bfa'}}>{loadAI?<Loader2 size={16} className="animate-spin"/>:<Zap size={16}/>}<span className="font-bold" style={{fontSize:'12px'}}>AI</span></button>
-              <button onClick={doReveal} disabled={dust<3} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border disabled:opacity-15 active:scale-95" style={{background:'rgba(255,255,255,0.02)',borderColor:'rgba(251,113,133,0.2)',color:'#fb7185'}}>{dust<3?<Lock size={16}/>:<Eye size={16}/>}<span className="font-bold" style={{fontSize:'12px'}}>\u00c7\u00d6Z</span></button>
-            </div>
-            <div className="w-full flex flex-col gap-1.5 px-1 pt-1 pb-7">
-              {KB.map((row,ri)=>(
-                <div key={ri} className="flex justify-center gap-1">
-                  {row.map(ch=>(
-                    <button key={ch} onClick={()=>procInput((guesses[sel]||'')+ch)} className="kb flex-1 rounded-xl fm font-bold flex items-center justify-center text-white" style={{height:'54px',maxWidth:'50px',fontSize:'17px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.08)'}}>{ch}</button>
-                  ))}
-                  {ri===2&&<button onClick={doBack} className="kb rounded-xl flex items-center justify-center" style={{height:'54px',width:'72px',background:'rgba(251,113,133,0.06)',border:'1px solid rgba(251,113,133,0.12)',color:'rgba(255,255,255,0.4)'}}><Delete size={22}/></button>}
-                </div>
-              ))}
-            </div>
+            <span className={"font-semibold tracking-widest px-3 py-1.5 rounded-full transition-all duration-500 "+(isSolved?'text-amber-100/90 ':'')+(isNext?'text-violet-200/80 ':'')+(isLocked?'text-white/8 ':'')} style={{fontSize:'11px',background:isSolved?'rgba(246,197,83,.06)':isNext?'rgba(167,139,250,.06)':'transparent',border:isSolved?'1px solid rgba(246,197,83,.15)':isNext?'1px solid rgba(167,139,250,.15)':'1px solid transparent'}}>
+              {label}
+            </span>
           </div>
-        </div>
-      )}
-
-      {/* HINT STAR */}
-      {animStar&&<div className="fixed z-[100] rounded-full w-2.5 h-2.5" style={{pointerEvents:'none',left:animStar.sx,top:animStar.sy,background:'#f6c553',boxShadow:'0 0 20px 6px rgba(246,197,83,0.25)','--tx':animStar.tx+'px','--ty':animStar.ty+'px',animation:'hintFly 1.7s cubic-bezier(0.2,0,0.2,1) forwards'}}/>}
-
-      {/* WIN */}
-      {showWin&&(
-        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="flex flex-col items-center gap-4 max-w-sm w-full text-center af">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}><Star size={30} fill="#f6c553" style={{color:'#f6c553'}}/></div>
-            <h2 className="fh text-3xl font-bold" style={{background:'linear-gradient(135deg,#f6c553,#fff,#a78bfa)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Ba\u011flant\u0131 Kuruldu</h2>
-            <div className="flex items-center gap-1 flex-wrap justify-center">{chain.map((w,i)=>(<React.Fragment key={i}><span className="fm font-semibold px-2 py-1 rounded-lg" style={{fontSize:'9px',color:'rgba(246,197,83,0.7)',background:'rgba(246,197,83,0.06)',border:'1px solid rgba(246,197,83,0.12)'}}>{w}</span>{i<chain.length-1&&<ChevronRight size={8} className="text-white/10"/>}</React.Fragment>))}</div>
-            <div className="w-full rounded-xl p-3 min-h-12 flex items-center justify-center" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}>{loadExpl?<Loader2 size={12} className="animate-spin text-white/20"/>:<p className="text-white/35 italic" style={{fontSize:'11px',lineHeight:'1.6'}}>{winExpl}</p>}</div>
-            <button onClick={nextLvl} className="w-full py-4 rounded-xl text-base font-bold tracking-widest" style={{background:'#f6c553',color:'#0a0a1a'}}>DEVAM ET</button>
-          </div>
-        </div>
-      )}
+        )
+      })}
     </div>
   );
 }
 
+// ══════ INPUT PANEL ══════
+function Panel(p){
+  var target=p.chain[p.sel];var guess=p.guess;
+  var ir=useRef(null);useEffect(function(){if(ir.current&&window.innerWidth>768)ir.current.focus()},[p.sel]);
+  return(
+    <div className="fixed inset-0 z-40 flex items-end justify-center" style={{pointerEvents:'none'}}>
+      <div className="w-full card flex flex-col items-center sh asu" style={{pointerEvents:'auto',borderRadius:'28px 28px 0 0',borderTop:'2px solid rgba(246,197,83,.12)',maxHeight:'88vh'}}>
+        <div className="w-full px-4 pt-3 pb-1 flex items-start justify-between">
+          <div className="flex-1 text-center px-4"><span className="fm text-white/15 uppercase block mb-1" style={{fontSize:'8px',letterSpacing:'.4em'}}>BAĞLANTIYI KUR</span><p className="text-white/60" style={{fontSize:'15px',lineHeight:'1.5'}}>{p.hints[p.sel]}</p></div>
+          <button onClick={p.onClose} className="text-white/20 hover:text-white/50 p-2"><X size={22}/></button>
+        </div>
+        {(p.aiTxt||p.loadAI)&&<div className="w-full px-4 pb-1 af"><div className="px-4 py-2.5 rounded-xl text-center" style={{background:'rgba(167,139,250,.06)',border:'1px solid rgba(167,139,250,.12)'}}>{p.loadAI?<div className="flex items-center justify-center gap-2" style={{color:'rgba(167,139,250,.4)'}}><Loader2 size={14} className="animate-spin"/><span style={{fontSize:'12px'}}>Düşünüyor...</span></div>:<p style={{color:'rgba(167,139,250,.7)',fontSize:'12px',lineHeight:'1.6',fontStyle:'italic'}}>{p.aiTxt}</p>}</div></div>}
+        <div className="relative w-full flex justify-center py-2 px-3">
+          <input ref={ir} type="text" value={guess} onChange={function(e){p.onInput(e.target.value)}} className="absolute inset-0 opacity-0" autoComplete="off" inputMode="none"/>
+          <div className="flex gap-2.5 justify-center flex-wrap">
+            {Array.from({length:target.length}).map(function(_,ci){var ch=guess[ci];var isH=p.hIdx===ci;return(
+              <div key={ci} ref={function(el){p.sRefs.current[ci]=el}} className={"rounded-xl flex items-center justify-center fm font-bold transition-all duration-200 "+(isH?'text-amber-200 ':ch?'text-white ':'text-white/10 ')} style={Object.assign({width:'46px',height:'58px',fontSize:'26px',background:isH?'rgba(246,197,83,.12)':ch?'rgba(255,255,255,.06)':'rgba(255,255,255,.02)',border:isH?'2px solid rgba(246,197,83,.35)':ch?'2px solid rgba(255,255,255,.12)':'2px solid rgba(255,255,255,.06)'},isH?{animation:'letterPop .4s ease-out',boxShadow:'0 0 18px var(--goldGlow)'}:{})}>{ch||'\u00B7'}</div>
+            )})}
+          </div>
+        </div>
+        <div className="flex gap-2 px-4 pb-2 w-full justify-center">
+          {[{fn:p.onLH,dis:!!p.animStar||p.dust<1,ic:<Lightbulb size={16}/>,l:"HARF",co:1,sty:{borderColor:'rgba(246,197,83,.2)',color:'var(--gold)'}},
+            {fn:p.onAI,dis:p.loadAI||p.dust<2,ic:p.loadAI?<Loader2 size={16} className="animate-spin"/>:<Zap size={16}/>,l:"AI",co:2,sty:{borderColor:'rgba(167,139,250,.2)',color:'var(--purple)'}},
+            {fn:p.onReveal,dis:p.dust<3,ic:p.dust<3?<Lock size={16}/>:<Eye size={16}/>,l:"ÇÖZ",co:3,sty:{borderColor:'rgba(251,113,133,.2)',color:'var(--rose)'}},
+          ].map(function(h){return(
+            <button key={h.l} onClick={h.fn} disabled={h.dis} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all disabled:opacity-15 active:scale-95" style={Object.assign({background:'rgba(255,255,255,.02)'},h.sty)}>
+              {h.ic}<span className="font-bold" style={{fontSize:'12px',letterSpacing:'.08em'}}>{h.l}</span><span className="fm opacity-30" style={{fontSize:'9px'}}>{h.co}✦</span>
+            </button>
+          )})}
+        </div>
+        <div className="w-full flex flex-col gap-1.5 px-1 pt-1 pb-7">
+          {KB.map(function(row,ri){return(
+            <div key={ri} className="flex justify-center gap-1">{row.map(function(ch){return(
+              <button key={ch} onClick={function(){p.onInput(guess+ch)}} className="kb flex-1 rounded-xl fm font-bold flex items-center justify-center text-white" style={{height:'54px',maxWidth:'50px',fontSize:'17px',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)'}}>{ch}</button>
+            )})}
+            {ri===2&&<button onClick={p.onBack} className="kb rounded-xl flex items-center justify-center" style={{height:'54px',width:'72px',background:'rgba(251,113,133,.06)',border:'1px solid rgba(251,113,133,.12)',color:'rgba(255,255,255,.4)'}}><Delete size={22}/></button>}
+            </div>
+          )})}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════ WIN ══════
+function Win(p){
+  var earned=DL+(p.cleanW*DC);
+  return(<div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 sh overflow-y-auto"><div className="flex flex-col items-center gap-4 max-w-sm w-full text-center af relative z-10">
+    <div className="relative"><div className="absolute inset-0 rounded-full" style={{background:'rgba(246,197,83,.1)',animation:'starBurst 1.5s ease-out forwards'}}/><div className="relative w-20 h-20 rounded-full glass flex items-center justify-center"><Star size={30} fill="var(--gold)" style={{color:'var(--gold)'}}/></div></div>
+    <div><h2 className="fh text-3xl font-bold gt">Bağlantı Kuruldu</h2><p className="fm text-white/12 uppercase mt-1" style={{fontSize:'8px',letterSpacing:'.4em'}}>{p.theme}</p></div>
+    <div className="flex items-center gap-1 flex-wrap justify-center px-1">{p.chain.map(function(w,i){return(<React.Fragment key={i}><span className="fm font-semibold px-2 py-1 rounded-lg" style={{fontSize:'9px',animation:'countUp .3s '+(i*.06)+'s ease-out both',color:i===0||i===p.chain.length-1?'rgba(246,197,83,.7)':'rgba(167,139,250,.7)',background:i===0||i===p.chain.length-1?'rgba(246,197,83,.06)':'rgba(167,139,250,.06)',border:i===0||i===p.chain.length-1?'1px solid rgba(246,197,83,.12)':'1px solid rgba(167,139,250,.12)'}}>{w}</span>{i<p.chain.length-1&&<ChevronRight size={8} className="text-white/10"/>}</React.Fragment>)})}</div>
+    <div className="glass rounded-2xl p-3.5 w-full min-h-12 flex items-center justify-center">{p.loadExpl?<div className="flex items-center gap-2 text-white/15"><Loader2 size={12} className="animate-spin"/><span style={{fontSize:'11px'}}>Yorumlanıyor...</span></div>:<p className="text-white/35 italic" style={{fontSize:'11px',lineHeight:'1.6'}}>{p.expl}</p>}</div>
+    <div className="flex items-center justify-center gap-2 flex-wrap"><div className="flex items-center gap-1 font-semibold px-3 py-1.5 rounded-full" style={{fontSize:'11px',color:'rgba(246,197,83,.7)',background:'rgba(246,197,83,.06)',border:'1px solid rgba(246,197,83,.12)'}}><Sparkles size={11}/>+{earned} toz</div>{p.streak>=SI&&<div className="flex items-center gap-1 font-semibold px-3 py-1.5 rounded-full" style={{fontSize:'11px',color:'rgba(251,113,133,.7)',background:'rgba(251,113,133,.06)',border:'1px solid rgba(251,113,133,.12)'}}><Flame size={11}/>{p.streak} seri!</div>}{p.cleanW===p.chain.length&&<div className="flex items-center gap-1 font-semibold px-3 py-1.5 rounded-full" style={{fontSize:'11px',color:'rgba(52,211,153,.7)',background:'rgba(52,211,153,.06)',border:'1px solid rgba(52,211,153,.12)'}}><Trophy size={11}/>Mükemmel!</div>}</div>
+    <button onClick={p.onNext} className="w-full py-3.5 rounded-xl font-semibold tracking-widest text-sm transition-transform hover:scale-105 active:scale-95" style={{background:'var(--gold)',color:'#030311'}}>DEVAM ET</button>
+  </div></div>)
+}
+
+function LevelMap(p){useEffect(function(){setTimeout(function(){var el=document.getElementById('lb'+p.lvl);if(el)el.scrollIntoView({behavior:'smooth',block:'center'})},200)},[p.lvl]);return(
+  <div className="fixed inset-0 z-[55] bg-[#030311] flex flex-col"><div className="flex flex-col h-full max-w-4xl mx-auto w-full px-4 pt-4">
+    <div className="flex justify-between items-center mb-3"><div className="flex items-center gap-2"><Compass size={15} style={{color:'var(--gold)'}}/><h2 className="fh text-lg font-bold">Atlas</h2></div><button onClick={p.onClose} className="glass px-3 py-1.5 rounded-full text-xs font-semibold tracking-widest text-white/40 hover:text-white flex items-center gap-1"><ArrowLeft size={11}/>GERİ</button></div>
+    <div className="w-full h-1 rounded-full bg-white/5 mb-3"><div className="h-full rounded-full" style={{width:((p.maxL+1)/MAXL*100)+'%',background:'linear-gradient(to right,var(--purpleDim),var(--gold))'}}/></div>
+    <div className="flex-1 overflow-y-auto sh pb-6"><div className="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2 content-start">{Array.from({length:MAXL}).map(function(_,i){var lk=i>p.maxL,cu=i===p.lvl,dn=i<p.maxL;return(<button key={i} id={'lb'+i} onClick={function(){if(!lk)p.onSel(i)}} disabled={lk} className={"aspect-square rounded-xl flex items-center justify-center relative transition-all "+(lk?'opacity-8 cursor-not-allowed':'cursor-pointer hover:scale-105 active:scale-95')}><div className={"absolute inset-0 rounded-xl border "+(cu?'shadow-lg':'')+(dn&&!cu?' ':'')} style={{background:cu?'rgba(167,139,250,.1)':dn?'rgba(246,197,83,.03)':'rgba(255,255,255,.02)',borderColor:cu?'rgba(167,139,250,.3)':dn?'rgba(246,197,83,.08)':'rgba(255,255,255,.04)'}}/><span className={"relative z-10 fm font-bold "+(cu?'text-white':dn?'text-amber-200/50':'text-white/10')} style={{fontSize:'11px'}}>{i+1}</span>{dn&&!cu&&<Star size={6} className="absolute -top-0.5 -right-0.5 z-10" style={{color:'var(--gold)',fill:'var(--gold)'}}/>}{lk&&<Lock size={7} className="absolute bottom-1 opacity-15 z-10"/>}</button>)})}</div></div>
+  </div></div>
+)}
+
+// ══════ APP ══════
+function App(){
+  var[user,setUser]=useState(null);var[screen,setScreen]=useState('WELCOME');
+  var[lvl,setLvl]=useState(0);var[lvlData,setLvlData]=useState(null);var[maxL,setMaxL]=useState(0);
+  var[found,setFound]=useState([]);var[guesses,setGuesses]=useState({});var[sel,setSel]=useState(null);
+  var[hintN,setHintN]=useState(new Set());var[streak,setStreak]=useState(0);
+  var[showWin,setShowWin]=useState(false);var[winExpl,setWinExpl]=useState('');var[loadExpl,setLoadExpl]=useState(false);
+  var[showMap,setShowMap]=useState(false);var[showMenu,setShowMenu]=useState(false);var[showTut,setShowTut]=useState(false);
+  var[confirm,setConfirm]=useState(null);var[toast,setToast]=useState(null);
+  var[dust,setDust]=useState(DI);var[sfxOn,setSfxOn]=useState(true);var[musOn,setMusOn]=useState(false);
+  var[aiTxt,setAiTxt]=useState(null);var[loadAI,setLoadAI]=useState(false);var[animStar,setAnimStar]=useState(null);var[hIdx,setHIdx]=useState(null);
+  var[tw,setTw]=useState(0);var[tl,setTl]=useState(0);
+  var sfxRef=useRef(true);useEffect(function(){sfxRef.current=sfxOn},[sfxOn]);
+  var[bgS]=useState(function(){return Array.from({length:100}).map(function(_,i){return{id:i,left:Math.random()*100,top:Math.random()*100,sz:Math.random()*1.5+.3,hue:['rgba(255,255,255,.5)','rgba(167,139,250,.3)','rgba(246,197,83,.3)','rgba(147,197,253,.25)'][Math.floor(Math.random()*4)],dur:Math.random()*5+2,del:Math.random()*8}})});
+  var[sh,setSh]=useState([]);var sRefs=useRef([]);
+  function sfx(t){if(sfxRef.current)SFX.play(t)}
+  useEffect(function(){MUS.toggle(musOn);return function(){MUS.toggle(false)}},[musOn]);
+  useEffect(function(){var em=LS.g('cur');if(em){var us=LS.g('users',{});if(us[em]){doAuth(us[em]);return}}setScreen('WELCOME')},[]);
+  function doAuth(u){setUser(u);setLvl(u.level||0);setMaxL(u.maxLevel||0);setDust(u.dust||DI);setStreak(u.streak||0);setTw(u.tw||0);setTl(u.tl||0);setScreen('HOME');if(!LS.g('tutDone'))setShowTut(true)}
+  function save(up){var em=LS.g('cur');if(!em)return;var us=LS.g('users',{});var u=us[em];if(!u)return;Object.assign(u,up||{});us[em]=u;LS.s('users',us)}
+  useEffect(function(){if(user)save({level:lvl,maxLevel:maxL,dust:dust,streak:streak,tw:tw,tl:tl})},[lvl,maxL,dust,streak,tw,tl]);
+  useEffect(function(){var iv=setInterval(function(){if(Math.random()>.7){var s={id:Date.now(),left:50+Math.random()*45,top:Math.random()*20};setSh(function(p){return p.concat([s])});setTimeout(function(){setSh(function(p){return p.filter(function(x){return x.id!==s.id})})},3e3)}},8e3);return function(){clearInterval(iv)}},[]);
+
+  // Load level
+  useEffect(function(){
+    if(!user)return;setFound([]);setGuesses({});setSel(null);setShowWin(false);setWinExpl('');setToast(null);setAnimStar(null);setHIdx(null);setShowMenu(false);setAiTxt(null);setHintN(new Set());
+    var id=lvl+1;var b=BASE.find(function(l){return l.id===id});
+    if(b){setLvlData(b);return}
+    var ca=LS.g('lv_'+lvl);if(ca){setLvlData(ca);return}
+    setScreen('GEN');
+    genLvl(id).then(function(g){LS.s('lv_'+lvl,g);setLvlData(g);setScreen('PLAY')}).then(null,function(err){setLvlData(BASE[lvl%15]);setScreen('PLAY')})
+  },[lvl,user]);
+
+  useEffect(function(){if(lvlData&&lvlData.chain&&lvlData.chain[sel])sRefs.current=sRefs.current.slice(0,lvlData.chain[sel].length)},[sel,lvlData]);
+
+  if(!lvlData&&screen!=='WELCOME'&&screen!=='AUTH'&&screen!=='GEN')return null;
+  var chain=lvlData?lvlData.chain:[];var hints=lvlData?lvlData.hints:[];var total=chain.length;
+  var diff=DF[lvlData?lvlData.difficulty:'orta']||DF.orta;
+
+  function nodeClick(i){sfx('click');if(found.includes(i))return;if(i>0&&!found.includes(i-1)){sfx('error');setToast("Önce önceki yıldızı aydınlat");return}setSel(i);setToast(null);setAiTxt(null)}
+  function procInput(val){if(sel===null)return;sfx('click');var t=chain[sel];var u=val.toLocaleUpperCase('tr-TR');if(u.length<=t.length){setGuesses(function(g){var n=Object.assign({},g);n[sel]=u;return n});if(u===t)correct(sel)}}
+  function doBack(){sfx('click');if(sel===null)return;var c=guesses[sel]||'';if(c.length>0)setGuesses(function(g){var n=Object.assign({},g);n[sel]=c.slice(0,-1);return n})}
+  function correct(idx){
+    sfx('word');var nf=found.concat([idx]);setFound(nf);setTw(function(w){return w+1});
+    var used=hintN.has(idx);setDust(function(d){return d+DW+(used?0:DC)});sfx('reward');
+    if(!used){var ns=streak+1;setStreak(ns);if(ns>0&&ns%SI===0){sfx('streak');setDust(function(d){return d+1});setToast("\uD83D\uDD25 "+ns+" seri! +1 bonus")}}else setStreak(0);
+    setTimeout(function(){setSel(null);if(nf.length===total){setTimeout(function(){sfx('level');setShowWin(true);setLoadExpl(true);explainCh(chain).then(function(e){setWinExpl(e);setLoadExpl(false)})},400)}},400)
+  }
+  function doLH(){if(sel===null||animStar)return;if(dust<1){sfx('error');setToast("Yıldız tozu yetersiz");return}sfx('hint');setHintN(function(s){var n=new Set(s);n.add(sel);return n});var t=chain[sel],c=(guesses[sel]||'').toLocaleUpperCase('tr-TR');var ni=0;for(var i=0;i<t.length;i++){if(c[i]!==t[i]){ni=i;break}ni=i+1}if(ni>=t.length)return;setDust(function(d){return d-1});var sl=sRefs.current[ni];if(!sl)return;var r=sl.getBoundingClientRect();var sx=window.innerWidth*.85,sy=40;setAnimStar({sx:sx,sy:sy,tx:r.left+r.width/2-sx,ty:r.top+r.height/2-sy});setTimeout(function(){var nc=t[ni],nv=c.substring(0,ni)+nc+c.substring(ni+1);setGuesses(function(g){var n=Object.assign({},g);n[sel]=nv;return n});setHIdx(ni);setTimeout(function(){setHIdx(null)},800);if(nv===t)correct(sel);setAnimStar(null)},1700)}
+  function doAI(){if(sel===null)return;if(dust<2){sfx('error');setToast("Yetersiz (2 gerekli)");return}sfx('hint');setHintN(function(s){var n=new Set(s);n.add(sel);return n});setDust(function(d){return d-2});setLoadAI(true);setAiTxt(null);var prev=sel>0&&found.includes(sel-1)?chain[sel-1]:'?';var next=sel<total-1?'?':'?';getAIHint(chain[sel],hints[sel],prev,next).then(function(h){setAiTxt(h);setLoadAI(false)})}
+  function doReveal(){if(sel===null)return;if(dust<3){sfx('error');setToast("Yetersiz (3 gerekli)");return}sfx('hint');setHintN(function(s){var n=new Set(s);n.add(sel);return n});setDust(function(d){return d-3});setGuesses(function(g){var n=Object.assign({},g);n[sel]=chain[sel];return n});correct(sel)}
+  function nextLvl(){sfx('click');setDust(function(d){return d+DL});setTl(function(l){return l+1});var n=lvl+1;if(n>maxL)setMaxL(n);setLvl(n<MAXL?n:0);setScreen('PLAY');setShowWin(false)}
+  var cleanW=lvlData?chain.filter(function(_,i){return!hintN.has(i)&&found.includes(i)}).length:0;
+  var cfgs={reset:{icon:<AlertTriangle size={20} style={{color:'var(--gold)'}}/>,bg:'rgba(246,197,83,.06)',title:'Sıfırla?',body:'Tüm ilerleme silinir.',label:'SIFIRLA',cls:'bg-amber-600'},quit:{icon:<Home size={20} className="text-white/50"/>,bg:'rgba(255,255,255,.03)',title:'Ana Menü',body:'Kaydedildi.',label:'ÇIK',cls:'bg-white text-black'},logout:{icon:<LogOut size={20} style={{color:'var(--rose)'}}/>,bg:'rgba(251,113,133,.06)',title:'Çıkış?',body:'Tekrar giriş yapabilirsin.',label:'ÇIKIŞ',cls:'bg-rose-600'}};
+  function doConfirm(t){sfx('click');if(t==='reset'){setLvl(0);setMaxL(0);setDust(DI);setStreak(0);setTw(0);setTl(0);save({level:0,maxLevel:0,dust:DI,streak:0,tw:0,tl:0});setScreen('HOME')}else if(t==='quit'){setScreen('HOME');setShowMenu(false)}else if(t==='logout'){LS.r('cur');setUser(null);setScreen('AUTH');MUS.toggle(false)}setConfirm(null)}
+
+  if(screen==='WELCOME')return(<div className="fixed inset-0"><BG s={bgS} sh={sh}/><CosmicWelcome onDone={function(){var em=LS.g('cur');if(em){var us=LS.g('users',{});if(us[em]){doAuth(us[em]);return}}setScreen('AUTH')}}/></div>);
+  if(screen==='AUTH')return <AuthScreen onAuth={doAuth} bgS={bgS} sh={sh}/>;
+  if(screen==='GEN')return(<div className="fixed inset-0 bg-[#030311] flex flex-col items-center justify-center gap-4 z-50"><BG s={bgS} sh={sh}/><div className="relative z-10 flex flex-col items-center gap-3"><div className="w-12 h-12 rounded-full animate-spin" style={{border:'2px solid rgba(167,139,250,.1)',borderTopColor:'var(--purple)'}}/><p className="fh text-lg text-white/30">Takımyıldızı Oluşturuluyor</p></div></div>);
+
+  if(screen==='HOME')return(
+    <div className="fixed inset-0 overflow-hidden"><BG s={bgS} sh={sh}/>
+      <div className="relative z-20 flex flex-col items-center justify-center w-full h-full p-5">
+        <div className="flex flex-col items-center gap-5 w-full max-w-sm">
+          <div className="flex flex-col items-center gap-2 afl"><div className="p-3 rounded-2xl glass"><BrainCircuit size={28} style={{color:'var(--gold)'}}/></div><h1 className="fh text-3xl font-bold gt tracking-wider">Yıldız Ağı</h1></div>
+          <div className="w-full card rounded-3xl p-5 shadow-2xl">
+            <div className="flex items-center gap-3 mb-3 pb-3" style={{borderBottom:'1px solid rgba(255,255,255,.04)'}}><div className="w-9 h-9 rounded-full glass flex items-center justify-center" style={{color:'var(--gold)'}}><User size={15}/></div><div className="flex-1"><p className="font-semibold text-sm">{user&&user.name}</p><p className="fm text-white/15" style={{fontSize:'8px'}}>{user&&user.email}</p></div><div className="flex items-center gap-1 px-2.5 py-1 glass rounded-full"><Sparkles size={11} style={{color:'var(--gold)',opacity:.6}}/><span className="fm font-bold" style={{fontSize:'11px',color:'rgba(246,197,83,.6)'}}>{dust}</span></div></div>
+            <div className="grid grid-cols-3 gap-2 mb-3">{[{v:lvl+1,l:'Seviye'},{v:tl,l:'Tamamlanan'},{v:tw,l:'Kelime'}].map(function(s){return(<div key={s.l} className="flex flex-col items-center py-2 rounded-lg" style={{background:'rgba(255,255,255,.02)',border:'1px solid rgba(255,255,255,.03)'}}><span className="fm font-bold text-white/60 text-sm">{s.v}</span><span className="text-white/10 uppercase" style={{fontSize:'7px',letterSpacing:'.08em'}}>{s.l}</span></div>)})}</div>
+            <div className="flex gap-2 mb-3">
+              <button onClick={function(){setSfxOn(function(s){return!s})}} className={"flex-1 py-2.5 rounded-lg border text-xs font-semibold tracking-widest flex items-center justify-center gap-1"} style={{borderColor:sfxOn?'rgba(167,139,250,.15)':'rgba(255,255,255,.04)',color:sfxOn?'var(--purple)':'rgba(255,255,255,.15)',background:sfxOn?'rgba(167,139,250,.04)':'transparent'}}>{sfxOn?<Volume2 size={12}/>:<VolumeX size={12}/>} EFEKT</button>
+              <button onClick={function(){sfx('click');setMusOn(function(m){return!m})}} className={"flex-1 py-2.5 rounded-lg border text-xs font-semibold tracking-widest flex items-center justify-center gap-1"} style={{borderColor:musOn?'rgba(246,197,83,.15)':'rgba(255,255,255,.04)',color:musOn?'var(--gold)':'rgba(255,255,255,.15)',background:musOn?'rgba(246,197,83,.04)':'transparent'}}>{musOn?<Music size={12}/>:<Music2 size={12}/>} MÜZİK</button>
+            </div>
+            <button onClick={function(){sfx('click');setScreen('PLAY')}} className="w-full py-3.5 rounded-xl font-semibold tracking-widest text-sm transition-transform hover:scale-105 active:scale-95 shadow-lg mb-2" style={{background:'var(--gold)',color:'#030311'}}>{maxL>0?'DEVAM ET':'BAŞLAT'}</button>
+            <div className="flex gap-2"><button onClick={function(){sfx('click');setShowMap(true)}} className="flex-1 py-2.5 rounded-xl glass text-white/30 text-xs font-semibold tracking-widest hover:bg-white/5 flex items-center justify-center gap-1"><Grid size={11}/>ATLAS</button><button onClick={function(){sfx('click');setShowTut(true)}} className="flex-1 py-2.5 rounded-xl glass text-white/30 text-xs font-semibold tracking-widest hover:bg-white/5 flex items-center justify-center gap-1"><Info size={11}/>REHBER</button></div>
+            <div className="flex gap-2 mt-2">{maxL>0&&<button onClick={function(){sfx('click');setConfirm('reset')}} className="flex-1 py-2 rounded-xl text-white/8 text-xs tracking-widest flex items-center justify-center gap-1"><RefreshCcw size={9}/>SIFIRLA</button>}<button onClick={function(){sfx('click');setConfirm('logout')}} className="flex-1 py-2 rounded-xl text-white/8 text-xs tracking-widest flex items-center justify-center gap-1"><LogOut size={9}/>ÇIKIŞ</button></div>
+          </div>
+        </div>
+      </div>
+      {showMap&&<LevelMap lvl={lvl} maxL={maxL} onSel={function(i){sfx('click');setLvl(i);setScreen('PLAY');setShowMap(false)}} onClose={function(){sfx('click');setShowMap(false)}}/>}
+      {showTut&&<Tutorial onDone={function(){setShowTut(false);LS.s('tutDone',true)}}/>}
+      <Confirm cfg={confirm?cfgs[confirm]:null} onNo={function(){sfx('click');setConfirm(null)}} onYes={function(){doConfirm(confirm)}}/>
+    </div>
+  );
+
+  // ══════ PLAY ══════
+  return(
+    <div className="fixed inset-0 overflow-hidden">
+      <BG s={bgS} sh={sh}/>
+      <div className="fixed top-0 left-0 right-0 z-30 p-3 flex justify-between items-start" style={{pointerEvents:'none'}}>
+        <div style={{pointerEvents:'auto'}} className="flex flex-col gap-1"><h2 className="fh text-base font-bold text-white/80">{user&&user.name}</h2><div className="flex items-center gap-1 flex-wrap"><span className="px-2 py-0.5 rounded-full fm text-white/20" style={{fontSize:'8px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.04)'}}>{String(lvl+1).padStart(2,'0')}/{MAXL}</span><span className={"px-2 py-0.5 rounded-full font-semibold border "+diff.c} style={{fontSize:'8px',letterSpacing:'.1em'}}>{diff.l}</span>{streak>=SI&&<span className="px-2 py-0.5 rounded-full font-semibold flex items-center gap-0.5" style={{fontSize:'8px',color:'var(--rose)',border:'1px solid rgba(251,113,133,.15)',background:'rgba(251,113,133,.04)'}}><Flame size={9}/>{streak}</span>}</div></div>
+        <div style={{pointerEvents:'auto'}} className="flex flex-col items-end gap-1 relative">
+          <div className="flex items-center gap-1">
+            <button onClick={function(){sfx('click');setMusOn(function(m){return!m})}} className="glass px-2.5 py-1.5 rounded-full" style={{color:musOn?'var(--gold)':'rgba(255,255,255,.1)'}}>{musOn?<Music size={12}/>:<Music2 size={12}/>}</button>
+            <button onClick={function(){setSfxOn(function(s){return!s})}} className="glass px-2.5 py-1.5 rounded-full" style={{color:sfxOn?'var(--purple)':'rgba(255,255,255,.1)'}}>{sfxOn?<Volume2 size={12}/>:<VolumeX size={12}/>}</button>
+            <div className="glass px-2.5 py-1.5 rounded-full flex items-center gap-1"><Sparkles size={11} style={{color:'var(--gold)',opacity:.5}}/><span className="fm font-bold" style={{fontSize:'11px',color:'rgba(246,197,83,.5)'}}>{dust}</span></div>
+            <button onClick={function(){sfx('click');setShowMenu(function(m){return!m})}} className="glass px-2.5 py-1.5 rounded-full font-semibold text-white/30" style={{fontSize:'11px'}}>☰</button>
+          </div>
+          {showMenu&&<div className="absolute top-full right-0 mt-1 w-36 card rounded-xl p-1 shadow-2xl afd z-50">
+            <button onClick={function(){sfx('click');setConfirm('quit')}} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-white/5 text-white/30"><Home size={11}/><span style={{fontSize:'10px'}}>Ana Menü</span></button>
+            <button onClick={function(){sfx('click');setShowMap(true);setShowMenu(false)}} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-white/5 text-white/30"><Compass size={11}/><span style={{fontSize:'10px'}}>Atlas</span></button>
+          </div>}
+        </div>
+      </div>
+      {toast&&<Toast msg={toast} onDone={function(){setToast(null)}}/>}
+      {lvlData&&lvlData.theme&&<div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-10" style={{pointerEvents:'none'}}><span className="fm text-white/4 uppercase" style={{fontSize:'7px',letterSpacing:'.5em'}}>{lvlData.theme}</span></div>}
+      <main className="relative z-10 w-full h-screen flex items-center justify-center px-4 pt-14 pb-6">
+        <Constellation chain={chain} found={found} sel={sel} onClick={nodeClick} lvl={lvl}/>
+      </main>
+      {sel!==null&&<Panel chain={chain} hints={hints} sel={sel} guess={guesses[sel]||''} onInput={procInput} onBack={doBack} onClose={function(){sfx('click');setSel(null);setAiTxt(null)}} onLH={doLH} onAI={doAI} onReveal={doReveal} animStar={animStar} hIdx={hIdx} aiTxt={aiTxt} loadAI={loadAI} dust={dust} sRefs={sRefs}/>}
+      {animStar&&<div className="fixed z-[100] rounded-full w-2.5 h-2.5" style={{pointerEvents:'none',left:animStar.sx,top:animStar.sy,background:'var(--gold)',boxShadow:'0 0 20px 6px var(--goldGlow)','--tx':animStar.tx+'px','--ty':animStar.ty+'px',animation:'hintFly 1.7s cubic-bezier(.2,0,.2,1) forwards'}}/>}
+      {showWin&&<Win chain={chain} theme={lvlData.theme||''} expl={winExpl} loadExpl={loadExpl} streak={streak} cleanW={cleanW} onNext={nextLvl}/>}
+      {showMap&&<LevelMap lvl={lvl} maxL={maxL} onSel={function(i){sfx('click');setLvl(i);setScreen('PLAY');setShowMap(false)}} onClose={function(){sfx('click');setShowMap(false)}}/>}
+      {showTut&&<Tutorial onDone={function(){setShowTut(false);LS.s('tutDone',true)}}/>}
+      <Confirm cfg={confirm?cfgs[confirm]:null} onNo={function(){sfx('click');setConfirm(null)}} onYes={function(){doConfirm(confirm)}}/>
+    </div>
+  );
+}
 createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
